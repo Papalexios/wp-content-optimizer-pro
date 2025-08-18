@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WP Content Optimizer Pro</title>
+    <title>AI Content Engine for WordPress</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -267,6 +267,19 @@
         .content-mode-toggle button:hover { background-color: #2b3648; color: var(--text-heading-color); }
         .content-mode-toggle button.active { background: var(--gradient-primary); color: white; }
         
+        .content-group-header {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-heading-color);
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .content-group-header:first-of-type {
+            margin-top: 0;
+        }
+
         .content-cards-container { display: grid; gap: 1.5rem; }
         .content-card {
             background-color: var(--bg-color);
@@ -279,6 +292,10 @@
         .content-card.selected {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.5), 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .content-card.generated {
+            border-color: rgba(63, 185, 80, 0.4);
+            opacity: 0.9;
         }
         .content-card-header {
             display: flex;
@@ -349,6 +366,23 @@
             font-weight: 600;
             color: var(--text-heading-color);
         }
+        .selection-toolbar-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .status-badge {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+        .status-badge.generated {
+            color: var(--success-color);
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
 
         /* Review Modal */
         .modal-overlay {
@@ -410,6 +444,29 @@
         .live-preview .references-section { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
         .live-preview .references-section ul { font-size: 0.9rem; list-style-type: none; padding-left: 0; }
         .live-preview .references-section li { margin-bottom: 0.5rem; }
+        
+        /* Footer */
+        .app-footer {
+            text-align: center;
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-light-color);
+            font-size: 0.875rem;
+        }
+        .app-footer p {
+            margin: 0.25rem 0;
+        }
+        .app-footer a {
+            color: var(--text-color);
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .app-footer a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
 
         @media (min-width: 768px) {
             body { padding: 2rem; }
