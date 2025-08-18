@@ -212,14 +212,28 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
     );
 };
 
-const ContentCard = ({ post, onGenerate, onReview, generationStatus }) => {
+const ContentCard = ({ post, onGenerate, onReview, generationStatus, isSelected, onToggleSelection, contentMode }) => {
     const isGenerated = generationStatus === 'done';
     const isGenerating = generationStatus === 'generating';
 
     return (
-        <div className="content-card">
+        <div className={`content-card ${isSelected ? 'selected' : ''}`}>
             <div className="content-card-header">
-                <h3>{post.title}</h3>
+                <input
+                    type="checkbox"
+                    className="card-checkbox"
+                    checked={isSelected}
+                    onChange={onToggleSelection}
+                    aria-label={`Select post: ${post.title}`}
+                />
+                <div className="header-main">
+                    <h3>{post.title}</h3>
+                    {contentMode === 'update' && post.modified && (
+                        <span className="post-date">
+                            Updated: {new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </span>
+                    )}
+                </div>
             </div>
             <div className="content-card-body">
                 {post.reason && <p>{post.reason}</p>}
@@ -242,8 +256,10 @@ const ContentCard = ({ post, onGenerate, onReview, generationStatus }) => {
 };
 
 const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll }) => {
-    const { posts, loading, contentMode, generationStatus } = state;
-    const isGenerateAllDisabled = loading || posts.length === 0 || posts.every(p => generationStatus[p.id] === 'done');
+    const { posts, loading, contentMode, generationStatus, selectedPostIds } = state;
+    const selectedCount = selectedPostIds.size;
+    const isGenerateAllDisabled = loading || (selectedCount === 0 && posts.every(p => generationStatus[p.id] === 'done'));
+    const allPostsSelected = posts.length > 0 && selectedCount === posts.length;
 
     return (
         <div className="step-container">
@@ -256,6 +272,15 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
                 </button>
             </div>
             
+            {selectedCount > 0 && (
+                <div className="selection-toolbar">
+                    <span>{selectedCount} post{selectedCount !== 1 ? 's' : ''} selected</span>
+                    <button className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'TOGGLE_SELECT_ALL' })}>
+                        {allPostsSelected ? 'Deselect All' : 'Select All'}
+                    </button>
+                </div>
+            )}
+
             {contentMode === 'update' && posts.length === 0 && !loading && (
                  <div className="fetch-posts-prompt">
                     <p>Ready to update your existing content?</p>
@@ -274,6 +299,9 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
                             generationStatus={generationStatus[post.id]}
                             onGenerate={() => onGenerateContent(post)}
                             onReview={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: postIndex })}
+                            isSelected={selectedPostIds.has(post.id)}
+                            onToggleSelection={() => dispatch({ type: 'TOGGLE_POST_SELECTION', payload: post.id })}
+                            contentMode={contentMode}
                         />
                     ))}
                 </div>
@@ -282,7 +310,7 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
             {posts.length > 0 && (
                 <div className="button-group" style={{justifyContent: 'center'}}>
                     <button className="btn" onClick={onGenerateAll} disabled={isGenerateAllDisabled}>
-                        {loading ? 'Generating...' : 'Generate All'}
+                        {loading ? 'Generating...' : (selectedCount > 0 ? `Generate for ${selectedCount} Selected` : 'Generate All')}
                     </button>
                 </div>
             )}
@@ -377,6 +405,7 @@ const initialState = {
     generationStatus: {}, // { postId: 'idle' | 'generating' | 'done' | 'error' }
     currentReviewIndex: 0,
     isReviewModalOpen: false,
+    selectedPostIds: new Set(),
 };
 
 function reducer(state, action) {
@@ -387,19 +416,33 @@ function reducer(state, action) {
         case 'SET_AI_PROVIDER': return { ...state, aiProvider: action.payload };
         case 'SET_KEY_STATUS': return { ...state, keyStatus: { ...state.keyStatus, [action.payload.provider]: action.payload.status } };
         case 'FETCH_START': return { ...state, loading: true, error: null };
-        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: action.payload, currentStep: 2, contentMode: 'new', generationStatus: {} };
-        case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {} };
+        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: action.payload, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set() };
+        case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set() };
         case 'FETCH_ERROR': return { ...state, loading: false, error: action.payload };
         case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [action.payload.postId]: action.payload.status } };
         case 'GENERATE_SINGLE_POST_SUCCESS': return { ...state, posts: state.posts.map(p => p.id === action.payload.id ? action.payload : p) };
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
-        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {} };
+        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set() };
         case 'PUBLISH_START': return { ...state, loading: true };
         case 'PUBLISH_SUCCESS': case 'PUBLISH_ERROR': return { ...state, loading: false, publishingStatus: { ...state.publishingStatus, [action.payload.postId]: { success: action.payload.success, message: action.payload.message, link: action.payload.link } } };
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
         case 'SET_REVIEW_INDEX': return { ...state, currentReviewIndex: action.payload };
         case 'OPEN_REVIEW_MODAL': return { ...state, isReviewModalOpen: true, currentReviewIndex: action.payload };
         case 'CLOSE_REVIEW_MODAL': return { ...state, isReviewModalOpen: false };
+        case 'TOGGLE_POST_SELECTION': {
+            const newSelection = new Set(state.selectedPostIds);
+            if (newSelection.has(action.payload)) {
+                newSelection.delete(action.payload);
+            } else {
+                newSelection.add(action.payload);
+            }
+            return { ...state, selectedPostIds: newSelection };
+        }
+        case 'TOGGLE_SELECT_ALL': {
+            const allPostIds = state.posts.map(p => p.id);
+            const allSelected = state.selectedPostIds.size === allPostIds.length && allPostIds.length > 0;
+            return { ...state, selectedPostIds: allSelected ? new Set() : new Set(allPostIds) };
+        }
         default: throw new Error(`Unhandled action type: ${action.type}`);
     }
 }
@@ -464,7 +507,7 @@ const App = () => {
         dispatch({ type: 'FETCH_START' });
         const { wpUrl, wpUser, wpPassword } = state;
         try {
-            const endpoint = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link&per_page=20&orderby=date&order=desc`;
+            const endpoint = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link,modified&per_page=20&orderby=date&order=desc`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`) });
             const response = await smartFetch(endpoint, { headers });
             if (!response.ok) {
@@ -472,7 +515,7 @@ const App = () => {
                 throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
             }
             const existingPosts = await response.json();
-            const formattedPosts = existingPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, content: '', reason: 'Existing post to be updated.' }));
+            const formattedPosts = existingPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, modified: p.modified, content: '', reason: 'Existing post to be updated.' }));
             dispatch({ type: 'FETCH_EXISTING_POSTS_SUCCESS', payload: formattedPosts });
         } catch (error) {
             dispatch({ type: 'FETCH_ERROR', payload: `Error fetching existing posts: ${error.message}` });
@@ -507,8 +550,8 @@ const App = () => {
         } catch (error) { console.warn("Could not fetch internal links sitemap, falling back to placeholders.", error); }
         
         const referencesInstruction = state.aiProvider === 'gemini' 
-            ? `**CRITICAL: Use Google Search:** You MUST use Google Search for up-to-date, authoritative info. A "References" section will be auto-generated.`
-            : `**CRITICAL: Add References:** After the conclusion, add an H2 section "References" with a list (\`<ul>\`) of 6-12 links to authoritative external sources.`;
+            ? `**CRITICAL: Use Google Search:** You MUST use Google Search for up-to-date, authoritative info. A "References" section will be auto-generated from real search results to ensure all links are valid and functional.`
+            : `**CRITICAL: Add REAL, VERIFIABLE References:** After the conclusion, you MUST add an H2 section titled "References". In this section, provide a bulleted list (\`<ul>\`) of 6-12 links to REAL, CURRENT, and ACCESSIBLE authoritative external sources. Every link MUST be a fully functional, live URL that does not result in a 404 error. Do not invent or guess URLs. Your top priority is the accuracy and validity of these links.`;
 
         const isNewContent = state.contentMode === 'new';
         const task = isNewContent ? "Write the ultimate, SEO-optimized blog post on the topic." : "Completely rewrite and supercharge the blog post from the URL into a definitive resource.";
@@ -570,7 +613,9 @@ const App = () => {
 
     const handleGenerateAll = async () => {
         dispatch({type: 'FETCH_START'});
-        const postsToGenerate = state.posts.filter(p => state.generationStatus[p.id] !== 'done');
+        const postsToGenerate = state.selectedPostIds.size > 0
+            ? state.posts.filter(p => state.selectedPostIds.has(p.id) && state.generationStatus[p.id] !== 'done')
+            : state.posts.filter(p => state.generationStatus[p.id] !== 'done');
         await processPromiseQueue(postsToGenerate, handleGenerateContent, null, 2000);
         dispatch({type: 'FETCH_ERROR', payload: null }); // to stop global loader
     };
