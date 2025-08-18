@@ -292,7 +292,7 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
                 <fieldset className="config-fieldset">
                     <legend>Content Source</legend>
                     <div className="form-group"><label htmlFor="sitemapUrl">Sitemap URL</label><input type="url" id="sitemapUrl" value={sitemapUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'sitemapUrl', value: e.target.value } })} placeholder="https://example.com/sitemap.xml" /></div>
-                    <div className="form-group"><label htmlFor="urlLimit">URL Limit for Analysis</label><input type="number" id="urlLimit" value={urlLimit} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'urlLimit', value: parseInt(e.target.value, 10) || 1 } })} min="1" /><p className="help-text">Max number of URLs from the sitemap to analyze for topic suggestions.</p></div>
+                    <div className="form-group"><label htmlFor="urlLimit">URL Limit for Analysis</label><input type="number" id="urlLimit" value={urlLimit} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'urlLimit', value: parseInt(e.target.value, 10) || 1 } })} min={1} /><p className="help-text">Max number of URLs from the sitemap to analyze for topic suggestions.</p></div>
                 </fieldset>
 
                 <fieldset className="config-fieldset">
@@ -730,13 +730,13 @@ const App = () => {
             const prompt = `You are an expert SEO strategist. Analyze these URLs: ${urls.join(', ')}. Identify 5 highly relevant, engaging topics or long-tail keywords the site likely hasn't covered to expand its topical authority. For each, provide a compelling blog post title and a brief reason for its value. Return a single, valid JSON object: { "suggestions": [ { "topic": "...", "reason": "..." } ] }`;
             
             if (state.aiProvider === 'gemini') {
-                const response = await (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { suggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ['topic', 'reason'] } } }, required: ['suggestions'] } } });
+                const response = await makeResilientAiCall(() => (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { suggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ['topic', 'reason'] } } }, required: ['suggestions'] } } }));
                 generatedText = response.text;
             } else if (state.aiProvider === 'anthropic') {
-                const response = await (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] });
+                const response = await makeResilientAiCall(() => (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }));
                 generatedText = response.content[0].type === 'text' ? response.content[0].text : '';
             } else { // OpenAI and OpenRouter
-                const response = await (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
+                const response = await makeResilientAiCall(() => (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } }));
                 generatedText = response.choices[0].message.content;
             }
 
