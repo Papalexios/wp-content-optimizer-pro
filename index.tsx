@@ -556,7 +556,8 @@ const App = () => {
                 generatedText = response.choices[0].message.content;
             }
 
-            const suggestions = JSON.parse(generatedText).suggestions;
+            const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText;
+            const suggestions = JSON.parse(jsonText).suggestions;
             if (!suggestions || !Array.isArray(suggestions)) throw new Error("AI did not return valid suggestions.");
 
             const posts = suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
