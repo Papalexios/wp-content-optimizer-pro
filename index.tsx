@@ -214,28 +214,16 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
     );
 };
 
-const ContentCard = ({ post, onGenerate, onReview, generationStatus, isSelected, onToggleSelection, contentMode }) => {
+const ContentCard = ({ post, onGenerate, onReview, generationStatus }) => {
     const isGenerated = generationStatus === 'done';
     const isGenerating = generationStatus === 'generating';
 
     return (
-        <div className={`content-card ${isSelected ? 'selected' : ''} ${isGenerated ? 'generated' : ''}`}>
+        <div className={`content-card ${isGenerated ? 'generated' : ''}`}>
             <div className="content-card-header">
-                <input
-                    type="checkbox"
-                    className="card-checkbox"
-                    checked={isSelected}
-                    onChange={onToggleSelection}
-                    aria-label={`Select post: ${post.title}`}
-                />
                 <div className="header-main">
                     <h3>{post.title}</h3>
                     {isGenerated && <span className="status-badge generated">✔ Generated</span>}
-                    {contentMode === 'update' && post.modified && !isGenerated && (
-                        <span className="post-date">
-                            Updated: {new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </span>
-                    )}
                 </div>
             </div>
             <div className="content-card-body">
@@ -258,14 +246,139 @@ const ContentCard = ({ post, onGenerate, onReview, generationStatus, isSelected,
     );
 };
 
-const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll }) => {
-    const { posts, loading, contentMode, generationStatus, selectedPostIds } = state;
-    const selectedCount = selectedPostIds.size;
+const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAll, onFetchExistingPosts }) => {
+    const { posts, loading, generationStatus, selectedPostIds, searchTerm, sortConfig } = state;
     
-    const pendingPosts = posts.filter(p => generationStatus[p.id] !== 'done');
-    const generatedPosts = posts.filter(p => generationStatus[p.id] === 'done');
+    const filteredPosts = useMemo(() => {
+        if (!searchTerm) return posts;
+        return posts.filter(post => 
+            post.title.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [posts, searchTerm]);
 
+    const sortedPosts = useMemo(() => {
+        const sorted = [...filteredPosts];
+        if (sortConfig.key) {
+            sorted.sort((a, b) => {
+                const aVal = a[sortConfig.key];
+                const bVal = b[sortConfig.key];
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sorted;
+    }, [filteredPosts, sortConfig]);
+    
+    const handleSort = (key) => {
+        const direction = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+        dispatch({ type: 'SET_SORT_CONFIG', payload: { key, direction } });
+    };
+    
+    const handleSelectAll = () => {
+        const allVisibleIds = sortedPosts.map(p => p.id);
+        dispatch({ type: 'SELECT_ALL_VISIBLE', payload: allVisibleIds });
+    };
+
+    const allVisibleSelected = sortedPosts.length > 0 && sortedPosts.every(p => selectedPostIds.has(p.id));
+    const selectedCount = selectedPostIds.size;
     const isGenerateAllDisabled = loading || selectedCount === 0;
+
+    return (
+         <div className="step-container full-width">
+            {posts.length === 0 && !loading ? (
+                <div className="fetch-posts-prompt">
+                    <p>Ready to update your existing content?</p>
+                    <button className="btn" onClick={onFetchExistingPosts} disabled={loading}>
+                        {loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Recent Posts'}
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <div className="table-toolbar">
+                        <input
+                           type="search"
+                           className="table-search-input"
+                           placeholder="Search posts by title..."
+                           value={searchTerm}
+                           onChange={e => dispatch({ type: 'SET_SEARCH_TERM', payload: e.target.value })}
+                        />
+                        <div className="selection-toolbar-actions">
+                            {selectedCount > 0 && (
+                                <>
+                                    <span>{selectedCount} post{selectedCount !== 1 ? 's' : ''} selected</span>
+                                    <button className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'DESELECT_ALL' })}>Deselect All</button>
+                                </>
+                            )}
+                            <button className="btn btn-small" onClick={onGenerateAll} disabled={isGenerateAllDisabled}>
+                                {loading && selectedCount > 0 ? 'Generating...' : `Generate for ${selectedCount} Selected`}
+                            </button>
+                        </div>
+                    </div>
+                    <div className="table-container">
+                        <table className="content-table">
+                            <thead>
+                                <tr>
+                                    <th className="checkbox-cell"><input type="checkbox" onChange={handleSelectAll} checked={allVisibleSelected} /></th>
+                                    <th className="sortable" onClick={() => handleSort('title')}>
+                                        Title
+                                        {sortConfig.key === 'title' && <span className={`sort-icon ${sortConfig.direction}`}></span>}
+                                    </th>
+                                    <th className="sortable" onClick={() => handleSort('modified')}>
+                                        Last Updated
+                                        {sortConfig.key === 'modified' && <span className={`sort-icon ${sortConfig.direction}`}></span>}
+                                    </th>
+                                    <th>Status</th>
+                                    <th className="actions-cell">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedPosts.map(post => {
+                                    const status = generationStatus[post.id] || 'idle';
+                                    const isSelected = selectedPostIds.has(post.id);
+                                    return (
+                                        <tr key={post.id} className={isSelected ? 'selected' : ''}>
+                                            <td className="checkbox-cell">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => dispatch({ type: 'TOGGLE_POST_SELECTION', payload: post.id })}
+                                                />
+                                            </td>
+                                            <td><a href={post.url} target="_blank" rel="noopener noreferrer">{post.title}</a></td>
+                                            <td>{new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                                            <td>
+                                                <div className={`status status-${status}`}>
+                                                    <span className="status-dot"></span>
+                                                    {status === 'generating' ? 'Generating...' : status === 'done' ? 'Generated' : status === 'error' ? 'Error' : 'Ready to Update'}
+                                                </div>
+                                            </td>
+                                            <td className="actions-cell">
+                                                {status !== 'done' && (
+                                                    <button className="btn btn-secondary btn-small" onClick={() => onGenerateContent(post)} disabled={status === 'generating'}>
+                                                        {status === 'generating' ? <div className="spinner" style={{width: '18px', height: '18px'}}></div> : 'Generate'}
+                                                    </button>
+                                                )}
+                                                {status === 'done' && (
+                                                    <button className="btn btn-small" onClick={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => p.id === post.id) })}>
+                                                        Review
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
+         </div>
+    );
+};
+
+const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll }) => {
+    const { posts, contentMode, generationStatus } = state;
 
     return (
         <div className="step-container">
@@ -278,88 +391,33 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
                 </button>
             </div>
             
-            {selectedCount > 0 && (
-                <div className="selection-toolbar">
-                    <span>{selectedCount} post{selectedCount !== 1 ? 's' : ''} selected</span>
-                    <div className="selection-toolbar-actions">
-                        {contentMode === 'update' && <button className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'SELECT_PENDING_POSTS' })}>Select Pending</button>}
-                        <button className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'DESELECT_ALL' })}>Deselect All</button>
-                    </div>
-                </div>
+            {contentMode === 'update' && (
+                <ExistingContentTable
+                    state={state}
+                    dispatch={dispatch}
+                    onGenerateContent={onGenerateContent}
+                    onGenerateAll={onGenerateAll}
+                    onFetchExistingPosts={onFetchExistingPosts}
+                />
             )}
 
-            {contentMode === 'update' && posts.length === 0 && !loading && (
-                 <div className="fetch-posts-prompt">
-                    <p>Ready to update your existing content?</p>
-                    <button className="btn" onClick={onFetchExistingPosts} disabled={loading}>
-                        {loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Recent Posts'}
-                    </button>
-                 </div>
-            )}
-            
             {contentMode === 'new' && posts.length > 0 && (
-                <div className="content-cards-container">
-                    {posts.map((post, postIndex) => (
-                        <ContentCard 
-                            key={post.id} 
-                            post={post}
-                            generationStatus={generationStatus[post.id]}
-                            onGenerate={() => onGenerateContent(post)}
-                            onReview={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: postIndex })}
-                            isSelected={selectedPostIds.has(post.id)}
-                            onToggleSelection={() => dispatch({ type: 'TOGGLE_POST_SELECTION', payload: post.id })}
-                            contentMode={contentMode}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {contentMode === 'update' && pendingPosts.length > 0 && (
                 <>
-                    <h2 className="content-group-header">Ready to Update</h2>
                     <div className="content-cards-container">
-                        {pendingPosts.map((post, postIndex) => (
-                             <ContentCard 
+                        {posts.map((post, postIndex) => (
+                            <ContentCard 
                                 key={post.id} 
                                 post={post}
                                 generationStatus={generationStatus[post.id]}
                                 onGenerate={() => onGenerateContent(post)}
-                                onReview={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => p.id === post.id) })}
-                                isSelected={selectedPostIds.has(post.id)}
-                                onToggleSelection={() => dispatch({ type: 'TOGGLE_POST_SELECTION', payload: post.id })}
-                                contentMode={contentMode}
+                                onReview={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: postIndex })}
                             />
                         ))}
                     </div>
-                </>
-            )}
-
-            {contentMode === 'update' && generatedPosts.length > 0 && (
-                <>
-                    <h2 className="content-group-header">Generated</h2>
-                     <div className="content-cards-container">
-                        {generatedPosts.map((post, postIndex) => (
-                             <ContentCard 
-                                key={post.id} 
-                                post={post}
-                                generationStatus={generationStatus[post.id]}
-                                onGenerate={() => onGenerateContent(post)}
-                                onReview={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => p.id === post.id) })}
-                                isSelected={selectedPostIds.has(post.id)}
-                                onToggleSelection={() => dispatch({ type: 'TOGGLE_POST_SELECTION', payload: post.id })}
-                                contentMode={contentMode}
-                            />
-                        ))}
+                    <div className="button-group" style={{justifyContent: 'center', marginTop: '2rem'}}>
+                        <button className="btn" onClick={onGenerateAll}>Generate All</button>
                     </div>
                 </>
-            )}
-            
-            {posts.length > 0 && (
-                <div className="button-group" style={{justifyContent: 'center'}}>
-                    <button className="btn" onClick={onGenerateAll} disabled={isGenerateAllDisabled}>
-                        {loading ? 'Generating...' : (selectedCount > 0 ? `Generate for ${selectedCount} Selected` : 'Generate All')}
-                    </button>
-                </div>
             )}
         </div>
     );
@@ -371,7 +429,6 @@ const ReviewModal = ({ state, dispatch, onPublish, onClose }) => {
     const currentPost = posts[currentReviewIndex];
     
     useEffect(() => {
-        // Reset to editor tab when post changes
         setActiveTab('editor');
     }, [currentReviewIndex]);
     
@@ -460,6 +517,8 @@ const initialState = {
     currentReviewIndex: 0,
     isReviewModalOpen: false,
     selectedPostIds: new Set(),
+    searchTerm: '',
+    sortConfig: { key: 'modified', direction: 'asc' },
 };
 
 function reducer(state, action) {
@@ -471,12 +530,12 @@ function reducer(state, action) {
         case 'SET_KEY_STATUS': return { ...state, keyStatus: { ...state.keyStatus, [action.payload.provider]: action.payload.status } };
         case 'FETCH_START': return { ...state, loading: true, error: null };
         case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: action.payload, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set() };
-        case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set() };
+        case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', sortConfig: { key: 'modified', direction: 'asc' } };
         case 'FETCH_ERROR': return { ...state, loading: false, error: action.payload };
         case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [action.payload.postId]: action.payload.status } };
         case 'GENERATE_SINGLE_POST_SUCCESS': return { ...state, posts: state.posts.map(p => p.id === action.payload.id ? action.payload : p) };
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
-        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set() };
+        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '' };
         case 'PUBLISH_START': return { ...state, loading: true };
         case 'PUBLISH_SUCCESS': case 'PUBLISH_ERROR': return { ...state, loading: false, publishingStatus: { ...state.publishingStatus, [action.payload.postId]: { success: action.payload.success, message: action.payload.message, link: action.payload.link } } };
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
@@ -492,15 +551,20 @@ function reducer(state, action) {
             }
             return { ...state, selectedPostIds: newSelection };
         }
-        case 'SELECT_PENDING_POSTS': {
-            const pendingPostIds = state.posts
-                .filter(p => state.generationStatus[p.id] !== 'done')
-                .map(p => p.id);
-            return { ...state, selectedPostIds: new Set(pendingPostIds) };
+        case 'SELECT_ALL_VISIBLE': {
+            const newSelection = new Set(state.selectedPostIds);
+            const allVisibleIds = action.payload;
+            const allCurrentlySelected = allVisibleIds.length > 0 && allVisibleIds.every(id => newSelection.has(id));
+            if (allCurrentlySelected) {
+                allVisibleIds.forEach(id => newSelection.delete(id));
+            } else {
+                allVisibleIds.forEach(id => newSelection.add(id));
+            }
+            return { ...state, selectedPostIds: newSelection };
         }
-        case 'DESELECT_ALL': {
-            return { ...state, selectedPostIds: new Set() };
-        }
+        case 'DESELECT_ALL': return { ...state, selectedPostIds: new Set() };
+        case 'SET_SEARCH_TERM': return { ...state, searchTerm: action.payload };
+        case 'SET_SORT_CONFIG': return { ...state, sortConfig: action.payload };
         default: throw new Error(`Unhandled action type: ${action.type}`);
     }
 }
@@ -556,12 +620,23 @@ const App = () => {
                 generatedText = response.choices[0].message.content;
             }
 
-            const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText;
-            const suggestions = JSON.parse(jsonText).suggestions;
-            if (!suggestions || !Array.isArray(suggestions)) throw new Error("AI did not return valid suggestions.");
+            try {
+                const startIndex = generatedText.indexOf('{');
+                const endIndex = generatedText.lastIndexOf('}');
+                if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+                    throw new Error("Could not find a valid JSON object in the AI response.");
+                }
+                const jsonText = generatedText.substring(startIndex, endIndex + 1);
+                const suggestions = JSON.parse(jsonText).suggestions;
+                if (!suggestions || !Array.isArray(suggestions)) throw new Error("AI did not return valid suggestions.");
 
-            const posts = suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
-            dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
+                const posts = suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
+                dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
+            } catch (parseError) {
+                console.error("Failed to parse AI response:", generatedText, parseError);
+                throw new Error(`Error processing AI suggestions: ${parseError.message}. The AI may have returned a malformed response.`);
+            }
+
         } catch (error) {
             dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${error.message}. Please verify the URL is correct and accessible.` });
         }
@@ -571,7 +646,7 @@ const App = () => {
         dispatch({ type: 'FETCH_START' });
         const { wpUrl, wpUser, wpPassword } = state;
         try {
-            const endpoint = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link,modified&per_page=20&orderby=modified&order=asc`;
+            const endpoint = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link,modified&per_page=50&orderby=modified&order=asc`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`) });
             const response = await smartFetch(endpoint, { headers });
             if (!response.ok) {
@@ -579,7 +654,7 @@ const App = () => {
                 throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
             }
             const existingPosts = await response.json();
-            const formattedPosts = existingPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, modified: p.modified, content: '', reason: 'Existing post to be updated.' }));
+            const formattedPosts = existingPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, modified: p.modified, content: '' }));
             dispatch({ type: 'FETCH_EXISTING_POSTS_SUCCESS', payload: formattedPosts });
         } catch (error) {
             dispatch({ type: 'FETCH_ERROR', payload: `Error fetching existing posts: ${error.message}` });
@@ -637,8 +712,8 @@ const App = () => {
                 const openAiResponse = await makeResilientAiCall(() => (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: basePrompt }], response_format: { type: "json_object" } }));
                 generatedText = openAiResponse.choices[0].message.content;
             }
-
-            const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText;
+            
+            const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText.match(/\{[\s\S]*\}/)?.[0] || generatedText;
             const parsedContent = JSON.parse(jsonText);
             let finalContent = parsedContent.content || '';
 
