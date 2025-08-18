@@ -17,6 +17,54 @@ const debounce = (func, delay) => {
 };
 
 /**
+ * Extracts a JSON object from a string that might be wrapped in markdown,
+ * have leading/trailing text, or other common AI response artifacts.
+ * @param text The raw string response from the AI.
+ * @returns The clean JSON string.
+ * @throws {Error} if a valid JSON object cannot be found.
+ */
+const extractJson = (text: string): string => {
+    // 1. Look for a JSON markdown block
+    const markdownMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+        try {
+            JSON.parse(markdownMatch[1].trim());
+            return markdownMatch[1].trim();
+        } catch (e) {
+            // Fall through if markdown content is not valid JSON
+        }
+    }
+
+    // 2. If no markdown, find the first '{' or '[' and last '}' or ']'
+    const firstBracket = text.indexOf('{');
+    const lastBracket = text.lastIndexOf('}');
+    const firstSquare = text.indexOf('[');
+    const lastSquare = text.lastIndexOf(']');
+
+    let start = -1;
+    let end = -1;
+
+    if (firstBracket !== -1 && lastBracket > firstBracket) {
+        start = firstBracket;
+        end = lastBracket;
+    }
+    
+    // Check if a square bracket JSON array is more likely
+    if (firstSquare !== -1 && lastSquare > firstSquare && (start === -1 || firstSquare < start)) {
+        start = firstSquare;
+        end = lastSquare;
+    }
+
+
+    if (start !== -1 && end > start) {
+        return text.substring(start, end + 1);
+    }
+
+    throw new Error("Could not find a valid JSON object in the AI response.");
+};
+
+
+/**
  * A professional, state-of-the-art promise queue processor.
  * It executes a series of promise-returning functions sequentially with a delay,
  * preventing API rate-limiting issues and providing progress updates.
@@ -293,7 +341,7 @@ const ContentCard = ({ post, onGenerate, onReview, generationStatus }) => {
 };
 
 const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAll, onFetchExistingPosts }) => {
-    const { posts, loading, generationStatus, selectedPostIds, searchTerm, sortConfig } = state;
+    const { posts, loading, generationStatus, selectedPostIds, searchTerm, sortConfig, bulkGenerationProgress } = state;
     
     const filteredPosts = useMemo(() => {
         if (!searchTerm) return posts;
@@ -327,8 +375,15 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
     };
 
     const allVisibleSelected = sortedPosts.length > 0 && sortedPosts.every(p => selectedPostIds.has(p.id));
-    const selectedCount = selectedPostIds.size;
-    const isGenerateAllDisabled = loading || selectedCount === 0;
+    
+    const generatableCount = useMemo(() => {
+        return [...selectedPostIds].filter(id => {
+            const status = generationStatus[id];
+            return status !== 'done' && status !== 'generating';
+        }).length;
+    }, [selectedPostIds, generationStatus]);
+
+    const isGenerateAllDisabled = bulkGenerationProgress.visible || generatableCount === 0;
 
     return (
          <div className="step-container full-width">
@@ -350,19 +405,32 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                            onChange={e => dispatch({ type: 'SET_SEARCH_TERM', payload: e.target.value })}
                         />
                         <div className="selection-toolbar-actions">
-                            {selectedCount > 0 && (
+                            {selectedPostIds.size > 0 && (
                                 <>
-                                    <span>{selectedCount} post{selectedCount !== 1 ? 's' : ''} selected</span>
+                                    <span>{selectedPostIds.size} post{selectedPostIds.size !== 1 ? 's' : ''} selected</span>
                                     <button className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'DESELECT_ALL' })}>Deselect All</button>
                                 </>
                             )}
                             <button className="btn btn-small" onClick={onGenerateAll} disabled={isGenerateAllDisabled}>
-                                {loading && selectedCount > 0 ? 'Generating...' : `Generate for ${selectedCount} Selected`}
+                                {bulkGenerationProgress.visible ? 'Generating...' : `Generate for ${generatableCount} Selected`}
                             </button>
                         </div>
                     </div>
+                    
+                    {bulkGenerationProgress.visible && (
+                        <div className="bulk-progress-bar">
+                            <div 
+                                className="bulk-progress-bar-fill" 
+                                style={{ width: `${(bulkGenerationProgress.current / bulkGenerationProgress.total) * 100}%` }}
+                            ></div>
+                            <span className="bulk-progress-bar-text">
+                                Generating {bulkGenerationProgress.current} of {bulkGenerationProgress.total} posts...
+                            </span>
+                        </div>
+                    )}
+
                     <div className="table-container">
-                        <table className="content-table">
+                        <table className="content-table mobile-cards">
                             <thead>
                                 <tr>
                                     <th className="checkbox-cell"><input type="checkbox" onChange={handleSelectAll} checked={allVisibleSelected} /></th>
@@ -379,11 +447,13 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedPosts.map(post => {
+                                {loading && posts.length === 0 ? (
+                                    <tr><td colSpan="5" style={{textAlign: 'center', padding: '2rem'}}><div className="spinner" style={{width: '32px', height: '32px', margin: '0 auto'}}></div></td></tr>
+                                ) : sortedPosts.map(post => {
                                     const status = generationStatus[post.id] || 'idle';
                                     const isSelected = selectedPostIds.has(post.id);
                                     return (
-                                        <tr key={post.id} className={isSelected ? 'selected' : ''}>
+                                        <tr key={post.id} className={`${isSelected ? 'selected' : ''} status-row-${status}`}>
                                             <td className="checkbox-cell">
                                                 <input
                                                     type="checkbox"
@@ -391,17 +461,17 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                                     onChange={() => dispatch({ type: 'TOGGLE_POST_SELECTION', payload: post.id })}
                                                 />
                                             </td>
-                                            <td><a href={post.url} target="_blank" rel="noopener noreferrer">{post.title}</a></td>
-                                            <td>{new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                                            <td>
+                                            <td data-label="Title"><a href={post.url} target="_blank" rel="noopener noreferrer">{post.title}</a></td>
+                                            <td data-label="Last Updated">{new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                                            <td data-label="Status">
                                                 <div className={`status status-${status}`}>
                                                     <span className="status-dot"></span>
                                                     {status === 'generating' ? 'Generating...' : status === 'done' ? 'Generated' : status === 'error' ? 'Error' : 'Ready to Update'}
                                                 </div>
                                             </td>
-                                            <td className="actions-cell">
+                                            <td data-label="Actions" className="actions-cell">
                                                 {status !== 'done' && (
-                                                    <button className="btn btn-secondary btn-small" onClick={() => onGenerateContent(post)} disabled={status === 'generating'}>
+                                                    <button className="btn btn-secondary btn-small" onClick={() => onGenerateContent(post)} disabled={status === 'generating' || bulkGenerationProgress.visible}>
                                                         {status === 'generating' ? <div className="spinner" style={{width: '18px', height: '18px'}}></div> : 'Generate'}
                                                     </button>
                                                 )}
@@ -560,6 +630,7 @@ const initialState = {
     contentMode: 'new',
     publishingStatus: {},
     generationStatus: {}, // { postId: 'idle' | 'generating' | 'done' | 'error' }
+    bulkGenerationProgress: { current: 0, total: 0, visible: false },
     currentReviewIndex: 0,
     isReviewModalOpen: false,
     selectedPostIds: new Set(),
@@ -611,6 +682,9 @@ function reducer(state, action) {
         case 'DESELECT_ALL': return { ...state, selectedPostIds: new Set() };
         case 'SET_SEARCH_TERM': return { ...state, searchTerm: action.payload };
         case 'SET_SORT_CONFIG': return { ...state, sortConfig: action.payload };
+        case 'BULK_GENERATE_START': return { ...state, bulkGenerationProgress: { current: 0, total: action.payload, visible: true } };
+        case 'BULK_GENERATE_PROGRESS': return { ...state, bulkGenerationProgress: { ...state.bulkGenerationProgress, current: state.bulkGenerationProgress.current + 1 } };
+        case 'BULK_GENERATE_COMPLETE': return { ...state, bulkGenerationProgress: { current: 0, total: 0, visible: false } };
         default: throw new Error(`Unhandled action type: ${action.type}`);
     }
 }
@@ -643,6 +717,7 @@ const App = () => {
         dispatch({ type: 'FETCH_START' });
         if (saveConfig) localStorage.setItem('wpContentOptimizerConfig', JSON.stringify({ wpUrl: state.wpUrl, wpUser: state.wpUser, wpPassword: state.wpPassword, aiProvider: state.aiProvider, apiKeys: state.apiKeys }));
         
+        let generatedText = '';
         try {
             const sitemapResponse = await smartFetch(sitemapUrl);
             if (!sitemapResponse.ok) throw new Error(`Failed to fetch sitemap. Status: ${sitemapResponse.status}`);
@@ -654,7 +729,6 @@ const App = () => {
             const ai = getAiClient();
             const prompt = `You are an expert SEO strategist. Analyze these URLs: ${urls.join(', ')}. Identify 5 highly relevant, engaging topics or long-tail keywords the site likely hasn't covered to expand its topical authority. For each, provide a compelling blog post title and a brief reason for its value. Return a single, valid JSON object: { "suggestions": [ { "topic": "...", "reason": "..." } ] }`;
             
-            let generatedText;
             if (state.aiProvider === 'gemini') {
                 const response = await (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { suggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ['topic', 'reason'] } } }, required: ['suggestions'] } } });
                 generatedText = response.text;
@@ -667,15 +741,7 @@ const App = () => {
             }
 
             try {
-                // Use a robust regex to extract JSON, handling optional markdown fences.
-                const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText.match(/\{[\s\S]*\}/)?.[0];
-                
-                if (!jsonText) {
-                    console.error("Could not find a valid JSON object in the AI response. Raw text:", generatedText);
-                    throw new Error("Could not find a valid JSON object in the AI response.");
-                }
-
-                // Attempt to parse the cleaned JSON string.
+                const jsonText = extractJson(generatedText);
                 const parsedData = JSON.parse(jsonText);
                 const suggestions = parsedData.suggestions;
 
@@ -687,15 +753,23 @@ const App = () => {
                 dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
 
             } catch (parseError) {
-                console.error("Failed to parse AI response:", generatedText, parseError);
-                const friendlyMessage = parseError.message.includes("JSON") 
+                console.error("Failed to parse AI response:", { generatedText, error: parseError });
+                let errorMessage = "An unknown error occurred during parsing.";
+                if (parseError instanceof Error) {
+                    errorMessage = parseError.message;
+                } else if (typeof parseError === 'string') {
+                    errorMessage = parseError;
+                }
+                
+                const friendlyMessage = errorMessage.includes("JSON") || errorMessage.includes("find a valid JSON")
                     ? "The AI returned a malformed response. Please try again."
-                    : parseError.message;
+                    : errorMessage;
                 throw new Error(`Error processing AI suggestions: ${friendlyMessage}`);
             }
 
         } catch (error) {
-            dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${error.message}. Please verify the URL is correct and accessible.` });
+            const message = (error instanceof Error) ? error.message : String(error);
+            dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${message}. Please verify the URL is correct and accessible.` });
         }
     };
 
@@ -714,7 +788,8 @@ const App = () => {
             const formattedPosts = existingPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, modified: p.modified, content: '' }));
             dispatch({ type: 'FETCH_EXISTING_POSTS_SUCCESS', payload: formattedPosts });
         } catch (error) {
-            dispatch({ type: 'FETCH_ERROR', payload: `Error fetching existing posts: ${error.message}` });
+            const message = (error instanceof Error) ? error.message : String(error);
+            dispatch({ type: 'FETCH_ERROR', payload: `Error fetching existing posts: ${message}` });
         }
     };
     
@@ -757,7 +832,8 @@ const App = () => {
 
         try {
             const ai = getAiClient();
-            let response, generatedText;
+            let response: GenerateContentResponse | null = null;
+            let generatedText: string;
 
             if (state.aiProvider === 'gemini') {
                 response = await makeResilientAiCall(() => (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: basePrompt, config: { tools: [{ googleSearch: {} }] } }));
@@ -770,16 +846,23 @@ const App = () => {
                 generatedText = openAiResponse.choices[0].message.content;
             }
             
-            const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText.match(/\{[\s\S]*\}/)?.[0] || generatedText;
+            const jsonText = extractJson(generatedText);
             const parsedContent = JSON.parse(jsonText);
             let finalContent = parsedContent.content || '';
 
-            if (state.aiProvider === 'gemini' && response?.candidates?.[0]?.groundingMetadata?.groundingChunks?.length > 0) {
-                const uniqueReferences = new Map(response.candidates[0].groundingMetadata.groundingChunks.map(c => [c.web?.uri, c.web?.title]).filter(([uri]) => uri));
+            const groundingChunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+            if (state.aiProvider === 'gemini' && groundingChunks && groundingChunks.length > 0) {
+                const uniqueReferences = (groundingChunks || []).reduce((map, chunk) => {
+                    if (chunk.web?.uri) {
+                        map.set(chunk.web.uri, chunk.web.title || chunk.web.uri);
+                    }
+                    return map;
+                }, new Map<string, string>());
+
                 if (uniqueReferences.size > 0) {
                     let referencesHtml = '<div class="references-section"><h2>References</h2><ul>';
                     uniqueReferences.forEach((title, uri) => {
-                        referencesHtml += `<li><a href="${uri}" target="_blank" rel="noopener noreferrer">${title || uri}</a></li>`;
+                        referencesHtml += `<li><a href="${uri}" target="_blank" rel="noopener noreferrer">${title}</a></li>`;
                     });
                     finalContent += referencesHtml + '</ul></div>';
                 }
@@ -791,20 +874,44 @@ const App = () => {
 
         } catch (error) {
             console.error("AI Generation Error for", topicOrUrl, error);
-            const errorMessage = (error.message && error.message.includes('429')) ? `Rate limit exceeded: ${error.message}` : `Error generating content: ${error.message}`;
+            let detailedMessage = "An unknown error occurred.";
+            if (error instanceof Error) {
+                detailedMessage = error.message;
+            } else if (typeof error === 'string') {
+                detailedMessage = error;
+            }
+            
+            const errorMessage = (detailedMessage.includes('429')) 
+                ? `Rate limit exceeded: ${detailedMessage}` 
+                : `Error generating content: ${detailedMessage}`;
+
             dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: { ...postToProcess, content: `<p>Error: ${errorMessage}</p>` } });
             dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'error' } });
         }
     };
 
     const handleGenerateAll = async () => {
-        dispatch({type: 'FETCH_START'});
-        const postsToGenerate = state.selectedPostIds.size > 0
+        const postsToProcess = (state.selectedPostIds.size > 0
             ? state.posts.filter(p => state.selectedPostIds.has(p.id))
-            : state.posts.filter(p => state.generationStatus[p.id] !== 'done');
-        await processPromiseQueue(postsToGenerate, handleGenerateContent, null, 2000);
-        dispatch({type: 'FETCH_ERROR', payload: null }); // to stop global loader
+            : state.posts)
+            .filter(p => {
+                const status = state.generationStatus[p.id];
+                return status !== 'done' && status !== 'generating';
+            });
+
+        if (postsToProcess.length === 0) return;
+        
+        dispatch({ type: 'BULK_GENERATE_START', payload: postsToProcess.length });
+
+        const progressCallback = () => {
+            dispatch({ type: 'BULK_GENERATE_PROGRESS' });
+        };
+        
+        await processPromiseQueue(postsToProcess, handleGenerateContent, progressCallback, 2000);
+        
+        dispatch({ type: 'BULK_GENERATE_COMPLETE' });
     };
+
 
     const handlePublish = async (post) => {
         dispatch({ type: 'PUBLISH_START' });
@@ -822,47 +929,36 @@ const App = () => {
             const responseData = await response.json();
             dispatch({ type: 'PUBLISH_SUCCESS', payload: { postId: post.id, success: true, message: `Successfully ${isUpdate ? 'updated' : 'published'} "${responseData.title.rendered}"!`, link: responseData.link } });
         } catch (error) {
-            dispatch({ type: 'PUBLISH_ERROR', payload: { postId: post.id, success: false, message: `Error publishing post: ${error.message}` } });
+            const message = (error instanceof Error) ? error.message : String(error);
+            dispatch({ type: 'PUBLISH_ERROR', payload: { postId: post.id, success: false, message: `Error publishing post: ${message}` } });
         }
     };
     
     const renderContent = () => {
         switch (state.currentStep) {
             case 1: return <ConfigStep state={state} dispatch={dispatch} onFetchSitemap={handleFetchSitemap} onValidateKey={handleValidateKey} />;
-            case 2: return <ContentStep state={state} dispatch={dispatch} onGenerateContent={handleGenerateContent} onGenerateAll={handleGenerateAll} onFetchExistingPosts={handleFetchExistingPosts} />;
-            default: return <div>Unknown step</div>;
+            case 2: return <ContentStep state={state} dispatch={dispatch} onGenerateContent={handleGenerateContent} onFetchExistingPosts={handleFetchExistingPosts} onGenerateAll={handleGenerateAll} />;
+            default: return <div>Error: Invalid step.</div>;
         }
     };
 
     return (
-        <div className="container">
-             {state.currentStep === 2 && (
-                <header className="app-header">
-                    <h1>AI Content Engine</h1>
-                    <button className="btn btn-secondary btn-small" onClick={() => dispatch({type: 'SET_STEP', payload: 1})}>Edit Configuration</button>
-                </header>
-            )}
-             {state.currentStep === 1 && (
-                <>
-                    <h1>AI Content Engine</h1>
-                    <p className="subtitle">Your professional suite for creating and optimizing high-ranking WordPress content, powered by AI.</p>
-                </>
-            )}
-            <ProgressBar currentStep={state.isReviewModalOpen ? 3 : state.currentStep} />
-            {state.error && <div className="result error" style={{marginBottom: '2rem'}}>{state.error}</div>}
-            {renderContent()}
-            {state.isReviewModalOpen && (
-                <ReviewModal 
-                    state={state}
-                    dispatch={dispatch}
-                    onPublish={handlePublish}
-                    onClose={() => dispatch({ type: 'CLOSE_REVIEW_MODAL' })}
-                />
-            )}
+        <>
+            <div className="container">
+                <div className="app-header">
+                     <h1>AI Content Engine</h1>
+                </div>
+                {state.error && <div className="result error">{state.error}</div>}
+                
+                <ProgressBar currentStep={state.currentStep} />
+                
+                {renderContent()}
+
+                 {state.isReviewModalOpen && <ReviewModal state={state} dispatch={dispatch} onPublish={handlePublish} onClose={() => dispatch({ type: 'CLOSE_REVIEW_MODAL' })} />}
+            </div>
             <Footer />
-        </div>
+        </>
     );
 };
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<React.StrictMode><App /></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
