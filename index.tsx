@@ -164,6 +164,49 @@ const ApiKeyValidator = ({ status }) => {
     return null;
 };
 
+const Feature = ({ icon, title, children }) => (
+    <div className="feature">
+        <div className="feature-icon">{icon}</div>
+        <div className="feature-content">
+            <h3>{title}</h3>
+            <p>{children}</p>
+        </div>
+    </div>
+);
+
+const LandingPageIntro = () => (
+    <div className="landing-intro">
+        <h2 className="usp-headline">The intelligent engine that elevates your content from good to #1.</h2>
+        <p className="usp-subheadline">
+            Go beyond generic AI writing. We analyze your content landscape to create strategically-focused articles, 10x better than the competition.
+        </p>
+        <div className="features-grid">
+            <Feature
+                icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002-2V9a2 2 0 00-2-2m-2 4h.01M15 20l5.447-2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m0 13V7m0 13a2 2 0 01-2-2V9a2 2 0 012-2m2 4h-.01" /></svg>}
+                title="Strategic Sitemap Analysis"
+            >
+                Unlike other tools, we analyze your sitemap to find high-value content gaps and expand your topical authority.
+            </Feature>
+            <Feature
+                icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>}
+                title="10x Content Generation"
+            >
+                Produce comprehensive, SEO-optimized, and internally-linked articles with a single click, ready to rank.
+            </Feature>
+            <Feature
+                icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                title="Existing Content Supercharger"
+            >
+                Revitalize your old posts by completely rewriting them into definitive, up-to-date, and authoritative resources.
+            </Feature>
+        </div>
+        <div className="risk-reversal">
+            <p><strong>Your Advantage:</strong> This is a powerful, free tool designed to give you a competitive edge. There are no trials or fees. Simply configure your details below and start optimizing.</p>
+        </div>
+    </div>
+);
+
+
 const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
     const { wpUrl, wpUser, wpPassword, sitemapUrl, urlLimit, loading, aiProvider, apiKeys, openRouterModels, keyStatus } = state;
     const isSitemapConfigValid = useMemo(() => sitemapUrl && sitemapUrl.trim() !== '', [sitemapUrl]);
@@ -187,27 +230,30 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
 
     return (
         <div className="step-container">
-            <fieldset className="config-fieldset">
-                <legend>WordPress Configuration</legend>
-                <div className="form-group"><label htmlFor="wpUrl">WordPress URL</label><input type="url" id="wpUrl" value={wpUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpUrl', value: e.target.value } })} placeholder="https://example.com" /></div>
-                <div className="form-group"><label htmlFor="wpUser">WordPress Username</label><input type="text" id="wpUser" value={wpUser} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpUser', value: e.target.value } })} placeholder="admin" /></div>
-                <div className="form-group"><label htmlFor="wpPassword">Application Password</label><input type="password" id="wpPassword" value={wpPassword} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpPassword', value: e.target.value } })} placeholder="••••••••••••••••" /><p className="help-text">This is not your main password. <a href="https://wordpress.org/documentation/article/application-passwords/" target="_blank" rel="noopener noreferrer">Learn how to create one</a>.</p></div>
-                <div className="checkbox-group"><input type="checkbox" id="saveConfig" checked={saveConfig} onChange={(e) => setSaveConfig(e.target.checked)} /><label htmlFor="saveConfig">Save WordPress Configuration</label></div>
-                <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: 'var(--warning-bg-color)', border: '1px solid var(--warning-color)', color: 'var(--warning-text-color)' }}><p style={{margin: 0, fontSize: '0.875rem', lineHeight: '1.5'}}><strong>Security Note:</strong> For reliability, this app may use public proxies to bypass browser security (CORS). Use a dedicated Application Password with limited permissions, not main admin credentials.</p></div>
-            </fieldset>
+            <LandingPageIntro />
+            <div className="config-forms-wrapper">
+                <fieldset className="config-fieldset">
+                    <legend>WordPress Configuration</legend>
+                    <div className="form-group"><label htmlFor="wpUrl">WordPress URL</label><input type="url" id="wpUrl" value={wpUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpUrl', value: e.target.value } })} placeholder="https://example.com" /></div>
+                    <div className="form-group"><label htmlFor="wpUser">WordPress Username</label><input type="text" id="wpUser" value={wpUser} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpUser', value: e.target.value } })} placeholder="admin" /></div>
+                    <div className="form-group"><label htmlFor="wpPassword">Application Password</label><input type="password" id="wpPassword" value={wpPassword} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpPassword', value: e.target.value } })} placeholder="••••••••••••••••" /><p className="help-text">This is not your main password. <a href="https://wordpress.org/documentation/article/application-passwords/" target="_blank" rel="noopener noreferrer">Learn how to create one</a>.</p></div>
+                    <div className="checkbox-group"><input type="checkbox" id="saveConfig" checked={saveConfig} onChange={(e) => setSaveConfig(e.target.checked)} /><label htmlFor="saveConfig">Save WordPress Configuration</label></div>
+                    <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: 'var(--warning-bg-color)', border: '1px solid var(--warning-color)', color: 'var(--warning-text-color)' }}><p style={{margin: 0, fontSize: '0.875rem', lineHeight: '1.5'}}><strong>Security Note:</strong> For reliability, this app may use public proxies to bypass browser security (CORS). Use a dedicated Application Password with limited permissions, not main admin credentials.</p></div>
+                </fieldset>
 
-            <fieldset className="config-fieldset">
-                <legend>Content Source</legend>
-                <div className="form-group"><label htmlFor="sitemapUrl">Sitemap URL</label><input type="url" id="sitemapUrl" value={sitemapUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'sitemapUrl', value: e.target.value } })} placeholder="https://example.com/sitemap.xml" /></div>
-                <div className="form-group"><label htmlFor="urlLimit">URL Limit for Analysis</label><input type="number" id="urlLimit" value={urlLimit} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'urlLimit', value: parseInt(e.target.value, 10) || 1 } })} min="1" /><p className="help-text">Max number of URLs from the sitemap to analyze for topic suggestions.</p></div>
-            </fieldset>
+                <fieldset className="config-fieldset">
+                    <legend>Content Source</legend>
+                    <div className="form-group"><label htmlFor="sitemapUrl">Sitemap URL</label><input type="url" id="sitemapUrl" value={sitemapUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'sitemapUrl', value: e.target.value } })} placeholder="https://example.com/sitemap.xml" /></div>
+                    <div className="form-group"><label htmlFor="urlLimit">URL Limit for Analysis</label><input type="number" id="urlLimit" value={urlLimit} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'urlLimit', value: parseInt(e.target.value, 10) || 1 } })} min="1" /><p className="help-text">Max number of URLs from the sitemap to analyze for topic suggestions.</p></div>
+                </fieldset>
 
-            <fieldset className="config-fieldset">
-                <legend>AI Configuration</legend>
-                <div className="form-group"><label htmlFor="aiProvider">AI Provider</label><select id="aiProvider" value={aiProvider} onChange={handleProviderChange}><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="openrouter">OpenRouter (Experimental)</option></select></div>
-                {aiProvider === 'openrouter' && (<div className="form-group"><label htmlFor="openRouterModel">Model</label><input type="text" id="openRouterModel" list="openrouter-models-list" value={state.openRouterModel} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'openRouterModel', value: e.target.value } })} placeholder="e.g., google/gemini-flash-1.5" /><datalist id="openrouter-models-list">{openRouterModels.map(model => <option key={model} value={model} />)}</datalist><p className="help-text">Enter any model name from <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">OpenRouter</a>.</p></div>)}
-                <div className="form-group api-key-group"><label htmlFor="apiKey">API Key</label><input type="password" id="apiKey" value={apiKeys[aiProvider] || ''} onChange={handleApiKeyChange} placeholder={`Enter your ${aiProvider.charAt(0).toUpperCase() + aiProvider.slice(1)} API Key`} /><ApiKeyValidator status={keyStatus[aiProvider]} /></div>
-            </fieldset>
+                <fieldset className="config-fieldset">
+                    <legend>AI Configuration</legend>
+                    <div className="form-group"><label htmlFor="aiProvider">AI Provider</label><select id="aiProvider" value={aiProvider} onChange={handleProviderChange}><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="openrouter">OpenRouter (Experimental)</option></select></div>
+                    {aiProvider === 'openrouter' && (<div className="form-group"><label htmlFor="openRouterModel">Model</label><input type="text" id="openRouterModel" list="openrouter-models-list" value={state.openRouterModel} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'openRouterModel', value: e.target.value } })} placeholder="e.g., google/gemini-flash-1.5" /><datalist id="openrouter-models-list">{openRouterModels.map(model => <option key={model} value={model} />)}</datalist><p className="help-text">Enter any model name from <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer">OpenRouter</a>.</p></div>)}
+                    <div className="form-group api-key-group"><label htmlFor="apiKey">API Key</label><input type="password" id="apiKey" value={apiKeys[aiProvider] || ''} onChange={handleApiKeyChange} placeholder={`Enter your ${aiProvider.charAt(0).toUpperCase() + aiProvider.slice(1)} API Key`} /><ApiKeyValidator status={keyStatus[aiProvider]} /></div>
+                </fieldset>
+            </div>
 
             <button className="btn" onClick={() => onFetchSitemap(sitemapUrl, urlLimit, saveConfig)} disabled={loading || !isSitemapConfigValid || !isApiKeyValid}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Analyze Sitemap & Continue'}</button>
         </div>
@@ -621,20 +667,31 @@ const App = () => {
             }
 
             try {
-                const startIndex = generatedText.indexOf('{');
-                const endIndex = generatedText.lastIndexOf('}');
-                if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+                // Use a robust regex to extract JSON, handling optional markdown fences.
+                const jsonText = generatedText.match(/```json\n([\s\S]*?)\n```/)?.[1] || generatedText.match(/\{[\s\S]*\}/)?.[0];
+                
+                if (!jsonText) {
+                    console.error("Could not find a valid JSON object in the AI response. Raw text:", generatedText);
                     throw new Error("Could not find a valid JSON object in the AI response.");
                 }
-                const jsonText = generatedText.substring(startIndex, endIndex + 1);
-                const suggestions = JSON.parse(jsonText).suggestions;
-                if (!suggestions || !Array.isArray(suggestions)) throw new Error("AI did not return valid suggestions.");
 
+                // Attempt to parse the cleaned JSON string.
+                const parsedData = JSON.parse(jsonText);
+                const suggestions = parsedData.suggestions;
+
+                if (!suggestions || !Array.isArray(suggestions)) {
+                    throw new Error("AI response is missing the 'suggestions' array.");
+                }
+                
                 const posts = suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
                 dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
+
             } catch (parseError) {
                 console.error("Failed to parse AI response:", generatedText, parseError);
-                throw new Error(`Error processing AI suggestions: ${parseError.message}. The AI may have returned a malformed response.`);
+                const friendlyMessage = parseError.message.includes("JSON") 
+                    ? "The AI returned a malformed response. Please try again."
+                    : parseError.message;
+                throw new Error(`Error processing AI suggestions: ${friendlyMessage}`);
             }
 
         } catch (error) {

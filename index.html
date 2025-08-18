@@ -159,6 +159,86 @@
             display: block;
         }
 
+        /* Landing Page Intro */
+        .landing-intro {
+            text-align: center;
+            padding-bottom: 2.5rem;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .usp-headline {
+            font-size: 1.75rem;
+            color: var(--text-heading-color);
+            margin: 0 auto 0.75rem;
+            max-width: 600px;
+            font-weight: 700;
+        }
+        .usp-subheadline {
+            font-size: 1rem;
+            color: var(--text-light-color);
+            margin: 0 auto 2.5rem;
+            max-width: 700px;
+            line-height: 1.6;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            text-align: left;
+            margin-bottom: 2.5rem;
+        }
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        .feature-icon {
+            flex-shrink: 0;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--primary-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+        .feature-content h3 {
+            margin: 0 0 0.5rem;
+            font-size: 1.1rem;
+            color: var(--text-heading-color);
+        }
+        .feature-content p {
+            margin: 0;
+            color: var(--text-light-color);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .risk-reversal {
+            background-color: var(--bg-color);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .risk-reversal p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-light-color);
+        }
+        .risk-reversal strong {
+            color: var(--text-color);
+        }
+        .config-forms-wrapper {
+            display: grid;
+            gap: 1rem;
+        }
+
         /* Forms */
         .step-container { max-width: 800px; margin: 0 auto; }
         .step-container.full-width { max-width: none; }
@@ -259,8 +339,9 @@
         .key-status-icon.success { color: var(--success-color); }
         .key-status-icon.error { color: var(--error-color); }
         .api-key-group { position: relative; }
-        .config-fieldset { border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin: 2rem 0 1.5rem; }
+        .config-fieldset { border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin: 0; }
         .config-fieldset legend { padding: 0 0.5rem; font-weight: 600; color: var(--text-heading-color); }
+        .step-container > .btn { margin-top: 2rem; width: 100%; }
 
         /* Content Step (Step 2) */
         .content-mode-toggle { display: flex; background-color: var(--bg-color); border-radius: 8px; padding: 5px; margin-bottom: 2rem; border: 1px solid var(--border-color); }
@@ -383,6 +464,14 @@
             .button-group .btn-secondary { margin-right: auto; }
             .btn { width: auto; }
             .content-cards-container { grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); }
+            .config-forms-wrapper {
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+            }
+            .config-forms-wrapper .config-fieldset:nth-child(3) {
+                grid-column: 1 / -1;
+            }
+            .step-container > .btn { width: auto; max-width: 400px; margin-left: auto; margin-right: auto; display: flex; }
         }
 
         @media (max-width: 768px) {
@@ -397,6 +486,8 @@
             .app-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
             .app-header h1 { font-size: 1.3rem; }
             p.subtitle { font-size: 0.9rem; margin-bottom: 1.5rem; }
+            .usp-headline { font-size: 1.5rem; }
+            .usp-subheadline { font-size: 0.95rem; }
             .progress-bar { max-width: 90%; margin-bottom: 2rem; }
             .progress-step .step-circle { width: 28px; height: 28px; font-size: 0.875rem; margin-bottom: 0; }
             .progress-step::before, .progress-step::after { top: 14px; }
