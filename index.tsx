@@ -423,7 +423,7 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
     );
 };
 
-const NewContentGenerator = ({ onGenerate, isGenerating }) => {
+const NewContentHub = ({ onGenerate, isGenerating, onGenerateIdeas, isGeneratingTopics, suggestedTopics }) => {
     const [topic, setTopic] = useState('');
 
     const handleSubmit = (e) => {
@@ -434,25 +434,48 @@ const NewContentGenerator = ({ onGenerate, isGenerating }) => {
     };
 
     return (
-        <div className="new-content-generator">
-            <h2>Create a New Pillar Post</h2>
-            <p>Enter your target keyword or a full blog post title below. The AI will generate a comprehensive, 1800+ word article designed to rank #1.</p>
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label htmlFor="newTopic">Topic or Keyword</label>
-                    <input
-                        type="text"
-                        id="newTopic"
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        placeholder="e.g., How to start affiliate marketing in 2025"
-                        disabled={isGenerating}
-                    />
-                </div>
-                <button type="submit" className="btn" disabled={!topic.trim() || isGenerating}>
-                    {isGenerating ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate Article'}
+        <div className="new-content-hub">
+            <div className="topic-suggester">
+                <h2>AI Content Strategist</h2>
+                <p>Let our AI analyze your site and suggest high-impact pillar posts to build your topical authority and boost organic traffic.</p>
+                <button className="btn" onClick={onGenerateIdeas} disabled={isGeneratingTopics}>
+                    {isGeneratingTopics ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate SEO Topic Ideas'}
                 </button>
-            </form>
+                {suggestedTopics.length > 0 && (
+                    <div className="suggestions-list">
+                        {suggestedTopics.map((idea, index) => (
+                            <div className="suggestion-card" key={index}>
+                                <h4>{idea.title}</h4>
+                                <p>{idea.description}</p>
+                                <button className="btn btn-secondary" onClick={() => onGenerate(idea.title)} disabled={isGenerating}>
+                                    {isGenerating ? 'Busy...' : 'Write This Article'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            
+            <div className="manual-topic-entry">
+                <h2>Or, Create Your Own Topic</h2>
+                <p>Enter your target keyword or a full blog post title below. The AI will generate a comprehensive, 1800+ word article designed to rank #1.</p>
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label htmlFor="newTopic">Topic or Keyword</label>
+                        <input
+                            type="text"
+                            id="newTopic"
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                            placeholder="e.g., How to start affiliate marketing in 2025"
+                            disabled={isGenerating}
+                        />
+                    </div>
+                    <button type="submit" className="btn" disabled={!topic.trim() || isGenerating}>
+                        {isGenerating ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate Article'}
+                    </button>
+                </form>
+            </div>
         </div>
     );
 };
@@ -610,8 +633,8 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
     );
 };
 
-const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll }) => {
-    const { contentMode, loading } = state;
+const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll, onGenerateTopicIdeas }) => {
+    const { contentMode, loading, isGeneratingTopics, suggestedTopics } = state;
 
     return (
         <div className="step-container">
@@ -635,7 +658,13 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
             )}
 
             {contentMode === 'new' && (
-                 <NewContentGenerator onGenerate={onGenerateContent} isGenerating={loading} />
+                 <NewContentHub
+                    onGenerate={onGenerateContent}
+                    isGenerating={loading}
+                    onGenerateIdeas={onGenerateTopicIdeas}
+                    isGeneratingTopics={isGeneratingTopics}
+                    suggestedTopics={suggestedTopics}
+                 />
             )}
         </div>
     );
@@ -684,8 +713,8 @@ const ReviewModal = ({ state, dispatch, onPublish, onClose }) => {
                     )}
                     {activeTab === 'seo' && (
                         <>
-                            <div className="form-group"><div className="label-wrapper"><label htmlFor="metaTitle">Meta Title</label><span className="char-counter">{currentPost.metaTitle?.length || 0} / 60</span></div><input type="text" id="metaTitle" value={currentPost.metaTitle || ''} onChange={e => updatePostField('metaTitle', e.target.value)} /></div>
-                            <div className="form-group"><div className="label-wrapper"><label htmlFor="metaDescription">Meta Description</label><span className="char-counter">{currentPost.metaDescription?.length || 0} / 160</span></div><textarea id="metaDescription" className="meta-description-input" value={currentPost.metaDescription || ''} onChange={e => updatePostField('metaDescription', e.target.value)} /></div>
+                            <div className="form-group"><div className="label-wrapper"><label htmlFor="metaTitle">Meta Title</label><span className="char-counter">{String(currentPost.metaTitle || '').length} / 60</span></div><input type="text" id="metaTitle" value={currentPost.metaTitle || ''} onChange={e => updatePostField('metaTitle', e.target.value)} /></div>
+                            <div className="form-group"><div className="label-wrapper"><label htmlFor="metaDescription">Meta Description</label><span className="char-counter">{String(currentPost.metaDescription || '').length} / 160</span></div><textarea id="metaDescription" className="meta-description-input" value={currentPost.metaDescription || ''} onChange={e => updatePostField('metaDescription', e.target.value)} /></div>
                         </>
                     )}
                     {activeTab === 'preview' && (
@@ -738,6 +767,8 @@ const initialState = {
     selectedPostIds: new Set(),
     searchTerm: '',
     sortConfig: { key: 'modified', direction: 'asc' },
+    isGeneratingTopics: false,
+    suggestedTopics: [] as { title: string; description: string }[],
 };
 
 function reducer(state, action) {
@@ -748,7 +779,7 @@ function reducer(state, action) {
         case 'SET_AI_PROVIDER': return { ...state, aiProvider: action.payload };
         case 'SET_KEY_STATUS': return { ...state, keyStatus: { ...state.keyStatus, [action.payload.provider]: action.payload.status } };
         case 'FETCH_START': return { ...state, loading: true, error: null };
-        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: [], sitemapUrls: action.payload.sitemapUrls, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set() };
+        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: [], sitemapUrls: action.payload.sitemapUrls, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set(), suggestedTopics: [] };
         case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', sortConfig: { key: 'modified', direction: 'asc' } };
         case 'FETCH_ERROR': return { ...state, loading: false, error: action.payload };
         case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [String(action.payload.postId)]: action.payload.status } };
@@ -764,7 +795,7 @@ function reducer(state, action) {
             };
         }
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
-        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '' };
+        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', suggestedTopics: [] };
         case 'PUBLISH_START': return { ...state, loading: true };
         case 'PUBLISH_SUCCESS': case 'PUBLISH_ERROR': return { ...state, loading: false, publishingStatus: { ...state.publishingStatus, [String(action.payload.postId)]: { success: action.payload.success, message: action.payload.message, link: action.payload.link } } };
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
@@ -797,6 +828,9 @@ function reducer(state, action) {
         case 'BULK_GENERATE_START': return { ...state, bulkGenerationProgress: { current: 0, total: action.payload, visible: true } };
         case 'BULK_GENERATE_PROGRESS': return { ...state, bulkGenerationProgress: { ...state.bulkGenerationProgress, current: state.bulkGenerationProgress.current + 1 } };
         case 'BULK_GENERATE_COMPLETE': return { ...state, bulkGenerationProgress: { current: 0, total: 0, visible: false } };
+        case 'GENERATE_TOPICS_START': return { ...state, isGeneratingTopics: true, error: null, suggestedTopics: [] };
+        case 'GENERATE_TOPICS_SUCCESS': return { ...state, isGeneratingTopics: false, suggestedTopics: action.payload };
+        case 'GENERATE_TOPICS_ERROR': return { ...state, isGeneratingTopics: false, error: action.payload };
         default: throw new Error(`Unhandled action type: ${action.type}`);
     }
 }
@@ -875,6 +909,75 @@ const App = () => {
         }
     };
 
+    const handleGenerateTopicIdeas = async () => {
+        dispatch({ type: 'GENERATE_TOPICS_START' });
+        const topicPrompt = `
+You are a master SEO strategist and content planner for a website in the affiliate marketing niche.
+Based on the following list of existing article URLs from the website, analyze the site's current topical authority. Your goal is to identify strategic content gaps and propose 5 new, high-impact pillar post ideas that will significantly boost organic traffic and strengthen the website's expertise.
+
+**Analysis of Existing URLs:**
+${getRandomSubset(state.sitemapUrls, 50).join('\n')}
+
+**Your Task:**
+Generate 5 blog post ideas that meet the following criteria:
+1.  **Topical Relevance:** They must be highly relevant to affiliate marketing, SEO, and making money online, complementing the existing content.
+2.  **High Traffic Potential:** Target keywords with substantial search volume and a clear path to ranking.
+3.  **Pillar Post Quality:** Each topic should be broad and deep enough to be developed into a 1800+ word comprehensive guide.
+4.  **Strategic Value:** The ideas should fill content gaps, attract a valuable audience segment, or target a lucrative sub-niche.
+
+**Output Format:**
+You MUST return a single, valid JSON object. The object should have a single key "ideas", which is an array of 5 objects. Each object in the array must have these two keys:
+- "title": A compelling, SEO-optimized H1 title for the blog post.
+- "description": A short, 1-2 sentence description explaining the strategic value of this topic and who it's for.
+`;
+        try {
+            const ai = getAiClient();
+            if (state.aiProvider !== 'gemini') {
+                throw new Error("Topic idea generation is currently only supported for the Google Gemini provider for best results.");
+            }
+            const { parsedContent } = await makeResilientAiCall(async () => {
+                 const response = await (ai as GoogleGenAI).models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: topicPrompt,
+                    config: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: Type.OBJECT,
+                            properties: {
+                                ideas: {
+                                    type: Type.ARRAY,
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            title: { type: Type.STRING },
+                                            description: { type: Type.STRING }
+                                        },
+                                        required: ["title", "description"]
+                                    }
+                                }
+                            },
+                             required: ["ideas"]
+                        }
+                    }
+                });
+                const jsonText = extractJson(response.text);
+                const data = JSON.parse(jsonText);
+                return { parsedContent: data };
+            });
+
+            if (!parsedContent.ideas || parsedContent.ideas.length === 0) {
+                throw new Error("AI did not return any topic ideas.");
+            }
+            dispatch({ type: 'GENERATE_TOPICS_SUCCESS', payload: parsedContent.ideas });
+
+        } catch (error) {
+            console.error("Topic Generation Error", error);
+            const message = (error instanceof Error) ? error.message : String(error);
+            dispatch({ type: 'GENERATE_TOPICS_ERROR', payload: `Error generating topic ideas: ${message}` });
+        }
+    };
+
+
     const handleGenerateContent = async (postOrTopic) => {
         const isNewContent = typeof postOrTopic === 'string';
         const postToProcess = isNewContent ? { id: -Date.now(), title: postOrTopic } : postOrTopic;
@@ -897,8 +1000,8 @@ const App = () => {
         const internalLinksInstruction = `**Internal Linking:** Your primary goal is to include 6-10 highly relevant internal links within the article body. You MUST choose them from the following list of articles from the user's website. Use rich, descriptive anchor text. Do NOT use placeholder links.\n\n**Available Internal Links:**\n${internalLinksList}`;
         
         const referencesInstruction = state.aiProvider === 'gemini' 
-            ? `**CRITICAL: Use Google Search:** You MUST use Google Search for up-to-date, authoritative info. A "References" section will be auto-generated from real search results to ensure all links are valid and functional.`
-            : `**CRITICAL: Add REAL, VERIFIABLE References:** After the conclusion, you MUST add an H2 section titled "References". In this section, provide a bulleted list (\`<ul>\`) of 6-12 links to REAL, CURRENT, and ACCESSIBLE authoritative external sources. Every link MUST be a fully functional, live URL that does not result in a 404 error. Do not invent or guess URLs. Your top priority is the accuracy and validity of these links.`;
+            ? `**CRITICAL: Use Google Search:** You MUST use Google Search for up-to-date, authoritative info. A "References" section will be auto-generated from real search results to ensure all links are valid, functional, 200 OK pages.`
+            : `**CRITICAL: Add 100% REAL, VERIFIABLE References:** After the conclusion, you MUST add an H2 section titled "References". In this section, provide a bulleted list (\`<ul>\`) of 6-12 links to REAL, CURRENT, and ACCESSIBLE authoritative external sources. Every single link MUST be a fully functional, live URL that resolves to a 200 OK page. Do not invent, guess, or hallucinate URLs. Your absolute top priority is the accuracy and validity of these links.`;
 
         const topicOrUrl = isNewContent ? postToProcess.title : (postToProcess.url || postToProcess.title);
         let task;
@@ -913,7 +1016,7 @@ const App = () => {
             }
         }
         
-        const basePrompt = `You are a world-class SEO and content strategist, operating as a definitive expert in the given topic. Your mission is to produce a comprehensive, 1800+ word pillar blog post that is strategically designed to rank #1 on Google.
+        const basePrompt = `You are a world-class SEO and content strategist, operating as a definitive expert in the given topic. Your writing style is direct, high-conviction, and packed with actionable value, reminiscent of Alex Hormozi. You challenge conventional wisdom and provide non-obvious insights. Your mission is to produce a comprehensive, 1800+ word pillar blog post that is strategically designed to rank #1 on Google.
 
 **Core Task:** ${task}
 
@@ -921,19 +1024,19 @@ const App = () => {
 
 1.  **Simulated SERP & Gap Analysis:**
     *   Deconstruct the topic: Identify the primary keyword, related LSI keywords, and common "People Also Ask" questions.
-    *   Competitor Gap Analysis: Mentally analyze what the top 5 search results for this topic likely cover. Your primary objective is to create content that addresses the gaps they've missed, providing significantly more value, depth, and unique insights.
+    *   Competitor Gap Analysis: Mentally analyze what the top 5 search results for this topic likely cover. Your primary objective is to create "10x content" that addresses the gaps they've missed, providing significantly more value, depth, and unique insights.
 
 2.  **Content & Tone:**
-    *   **Expert Persona:** Write with authority. Inject critical thinking, personal experience (you can simulate this), and strong opinions to make the content trustworthy and unique.
+    *   **Expert Persona:** Write with extreme authority. Inject critical thinking, simulated personal experience, and strong, defensible opinions to make the content trustworthy and unique. Avoid generic, fluffy language.
     *   **Readability is Key:** Use short, punchy paragraphs (2-3 sentences max). Utilize bolding for key terms, bullet points (\`<ul>\`), and numbered lists (\`<ol>\`) to make the extensive content scannable and easy to digest.
 
 3.  **Required Article Structure (in this exact order):**
-    *   **"Wow" Introduction:** Start with a compelling hook, such as a surprising statistic or a bold claim, to grab the reader's attention immediately.
-    *   **Key Takeaways Box:** Immediately after the intro, add an H3 titled "Key Takeaways" inside a \`<div class="key-takeaways">\`. Provide a bulleted list of 6-8 crucial points from the article.
-    *   **Comprehensive Body:** This is the main section. Create a deep-dive exploration of the topic using clear H2 and H3 subheadings. Cover all aspects of the main keyword, LSI terms, and the insights from your gap analysis.
+    *   **"Wow" Introduction:** Start with a compelling hook, such as a surprising statistic, a bold contrarian claim, or a relatable pain point to grab the reader's attention immediately.
+    *   **Key Takeaways Box:** Immediately after the intro, add an H3 titled "Key Takeaways" inside a \`<div class="key-takeaways">\`. Provide a bulleted list of 6-8 crucial, actionable points from the article.
+    *   **Comprehensive Body:** This is the main section. Create a deep-dive exploration of the topic using clear H2 and H3 subheadings. The final article MUST be a pillar post of at least 1800 words. Cover all aspects of the main keyword, LSI terms, and the insights from your gap analysis.
     *   **Internal Linking:** ${internalLinksInstruction}
     *   **FAQ Section:** Include an H2 titled "Frequently Asked Questions" and answer 3-5 relevant questions (inspired by "People Also Ask").
-    *   **Conclusion:** Provide a strong, actionable conclusion that summarizes the key points and gives the reader a clear next step.
+    *   **Conclusion:** Provide a strong, actionable conclusion that summarizes the key points and gives the reader a clear, compelling next step.
     *   **References:** ${referencesInstruction}
 
 4.  **Final JSON Output:**
@@ -1073,7 +1176,7 @@ const App = () => {
     const renderContent = () => {
         switch (state.currentStep) {
             case 1: return <ConfigStep state={state} dispatch={dispatch} onFetchSitemap={handleFetchSitemap} onValidateKey={handleValidateKey} />;
-            case 2: return <ContentStep state={state} dispatch={dispatch} onGenerateContent={handleGenerateContent} onFetchExistingPosts={handleFetchExistingPosts} onGenerateAll={handleGenerateAll} />;
+            case 2: return <ContentStep state={state} dispatch={dispatch} onGenerateContent={handleGenerateContent} onFetchExistingPosts={handleFetchExistingPosts} onGenerateAll={handleGenerateAll} onGenerateTopicIdeas={handleGenerateTopicIdeas} />;
             default: return <div>Error: Invalid step.</div>;
         }
     };

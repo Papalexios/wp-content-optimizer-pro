@@ -403,34 +403,41 @@
         .content-mode-toggle button:hover { background-color: #2b3648; color: var(--text-heading-color); }
         .content-mode-toggle button.active { background: var(--gradient-primary); color: white; }
         
-        /* New Content Generator Form */
-        .new-content-generator {
+        /* New Content Hub */
+        .new-content-hub { display: flex; flex-direction: column; gap: 2.5rem; }
+        .topic-suggester, .manual-topic-entry {
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             padding: 2rem;
             border-radius: 12px;
             text-align: center;
         }
-        .new-content-generator h2 {
+        .topic-suggester h2, .manual-topic-entry h2 {
             margin: 0 0 0.5rem;
             color: var(--text-heading-color);
             font-size: 1.5rem;
         }
-        .new-content-generator p {
+        .topic-suggester p, .manual-topic-entry p {
             margin: 0 auto 2rem;
             color: var(--text-light-color);
             max-width: 600px;
             line-height: 1.6;
         }
-        .new-content-generator form {
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: left;
+        .manual-topic-entry form { max-width: 600px; margin: 0 auto; text-align: left; }
+        .manual-topic-entry .btn { width: 100%; }
+        .suggestions-list { margin-top: 2.5rem; text-align: left; }
+        .suggestion-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            animation: fadeIn 0.5s ease-out;
         }
-        .new-content-generator .btn {
-            width: 100%;
-        }
-        
+        .suggestion-card h4 { margin: 0 0 0.5rem; font-size: 1.1rem; color: var(--text-heading-color); }
+        .suggestion-card p { margin: 0 0 1.5rem; font-size: 0.9rem; color: var(--text-light-color); max-width: none; text-align: left; }
+        .suggestion-card .btn { width: 100%; }
+
         /* Existing Content Prompt & Table */
         .fetch-posts-prompt { text-align: center; padding: 2rem; margin: 2rem auto; background-color: var(--bg-color); border: 1px dashed var(--border-color); border-radius: 12px; }
         .fetch-posts-prompt p { margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--text-heading-color); }
@@ -567,6 +574,7 @@
                 grid-column: 1 / -1;
             }
             .step-container > .btn { width: auto; max-width: 400px; margin-left: auto; margin-right: auto; display: flex; }
+            .suggestion-card .btn { width: auto; display: inline-flex; }
         }
 
         @media (max-width: 767px) {
