@@ -496,6 +496,11 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
             sorted.sort((a, b) => {
                 const aVal = a[sortConfig.key];
                 const bVal = b[sortConfig.key];
+                
+                // Rules to handle undefined/null values, pushing them to the bottom
+                if (aVal == null) return 1;
+                if (bVal == null) return -1;
+
                 if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                 if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                 return 0;
@@ -602,7 +607,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                                 />
                                             </td>
                                             <td data-label="Title"><a href={post.url} target="_blank" rel="noopener noreferrer">{post.title}</a></td>
-                                            <td data-label="Last Updated">{new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                                            <td data-label="Last Updated">{post.modified ? new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</td>
                                             <td data-label="Status">
                                                 <div className={`status status-${status}`}>
                                                     <span className="status-dot"></span>
@@ -797,7 +802,46 @@ function reducer(state, action) {
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
         case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', suggestedTopics: [] };
         case 'PUBLISH_START': return { ...state, loading: true };
-        case 'PUBLISH_SUCCESS': case 'PUBLISH_ERROR': return { ...state, loading: false, publishingStatus: { ...state.publishingStatus, [String(action.payload.postId)]: { success: action.payload.success, message: action.payload.message, link: action.payload.link } } };
+        case 'PUBLISH_SUCCESS': {
+            const { originalPostId, responseData, message, link } = action.payload;
+            const newPostId = responseData.id;
+            const isCreation = typeof originalPostId === 'number' && originalPostId < 0;
+
+            const newPublishingStatus = { ...state.publishingStatus };
+            if (isCreation) {
+                delete newPublishingStatus[String(originalPostId)];
+            }
+            newPublishingStatus[String(newPostId)] = { success: true, message, link };
+
+            return {
+                ...state,
+                loading: false,
+                posts: state.posts.map(p => {
+                    if (String(p.id) === String(originalPostId)) {
+                        return { ...p, id: newPostId, url: responseData.link, modified: responseData.modified };
+                    }
+                    if (!isCreation && String(p.id) === String(newPostId)) {
+                        return { ...p, modified: responseData.modified };
+                    }
+                    return p;
+                }),
+                publishingStatus: newPublishingStatus,
+            };
+        }
+        case 'PUBLISH_ERROR': {
+            const { postId, message } = action.payload;
+            return {
+                ...state,
+                loading: false,
+                publishingStatus: {
+                    ...state.publishingStatus,
+                    [String(postId)]: {
+                        success: false,
+                        message,
+                    },
+                },
+            };
+        }
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
         case 'SET_REVIEW_INDEX': return { ...state, currentReviewIndex: action.payload };
         case 'OPEN_REVIEW_MODAL': return { ...state, isReviewModalOpen: true, currentReviewIndex: action.payload };
@@ -1155,9 +1199,10 @@ You MUST return a single, valid JSON object. The object should have a single key
     const handlePublish = async (post) => {
         dispatch({ type: 'PUBLISH_START' });
         const { wpUrl, wpUser, wpPassword } = state;
+        const originalPostId = post.id;
         try {
-            const isUpdate = typeof post.id === 'number' && post.id > 0;
-            const endpoint = isUpdate ? `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts/${post.id}` : `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts`;
+            const isUpdate = typeof originalPostId === 'number' && originalPostId > 0;
+            const endpoint = isUpdate ? `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts/${originalPostId}` : `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`), 'Content-Type': 'application/json' });
             const body = JSON.stringify({ title: post.title, content: post.content, status: 'publish', meta: { _yoast_wpseo_title: post.metaTitle, _yoast_wpseo_metadesc: post.metaDescription } });
             const response = await directFetch(endpoint, { method: 'POST', headers, body });
@@ -1166,10 +1211,18 @@ You MUST return a single, valid JSON object. The object should have a single key
                 throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
             }
             const responseData = await response.json();
-            dispatch({ type: 'PUBLISH_SUCCESS', payload: { postId: post.id, success: true, message: `Successfully ${isUpdate ? 'updated' : 'published'} "${responseData.title.rendered}"!`, link: responseData.link } });
+            dispatch({
+                type: 'PUBLISH_SUCCESS',
+                payload: {
+                    originalPostId,
+                    responseData,
+                    message: `Successfully ${isUpdate ? 'updated' : 'published'} "${responseData.title.rendered}"!`,
+                    link: responseData.link
+                }
+            });
         } catch (error) {
             const message = (error instanceof Error) ? error.message : String(error);
-            dispatch({ type: 'PUBLISH_ERROR', payload: { postId: post.id, success: false, message: `Error publishing post: ${message}` } });
+            dispatch({ type: 'PUBLISH_ERROR', payload: { postId: originalPostId, message: `Error publishing post: ${message}` } });
         }
     };
     
