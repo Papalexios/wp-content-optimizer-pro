@@ -17,6 +17,22 @@ const debounce = (func, delay) => {
 };
 
 /**
+ * Returns a random subset of an array using the Fisher-Yates shuffle algorithm.
+ * @param array The source array.
+ * @param size The size of the random subset to return.
+ * @returns A new array containing the random subset.
+ */
+const getRandomSubset = (array, size) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, size);
+};
+
+
+/**
  * Extracts a JSON object from a string that might be wrapped in markdown,
  * have leading/trailing text, or other common AI response artifacts.
  * @param text The raw string response from the AI.
@@ -93,11 +109,13 @@ const processPromiseQueue = async (items, promiseFn, onProgress, delay = 1000) =
 };
 
 /**
- * Wraps a promise-returning function with an exponential backoff retry mechanism
- * to handle transient errors, specifically API rate limiting (HTTP 429).
- * @param apiCallFn The async function to call.
+ * Wraps an async function with a robust retry mechanism. It retries on any failure,
+ * using exponential backoff for API rate-limiting errors (HTTP 429) and a short,
+ * constant delay for other transient errors (e.g., network issues, JSON parsing).
+ * @param apiCallFn The async function to call, which should handle the entire process
+ * including parsing and validation, throwing an error on failure.
  * @param maxRetries The maximum number of retries before giving up.
- * @param initialDelay The initial delay in ms for the first retry.
+ * @param initialDelay The initial delay in ms for the first rate-limit retry.
  * @returns A Promise that resolves with the result of the `apiCallFn`.
  */
 const makeResilientAiCall = async <T,>(
@@ -111,30 +129,36 @@ const makeResilientAiCall = async <T,>(
             return await apiCallFn();
         } catch (error: any) {
             lastError = error;
+            if (i >= maxRetries - 1) {
+                console.error(`AI call failed on final attempt (${maxRetries}).`, error);
+                throw error; // Throw after final attempt
+            }
+
             const isRateLimitError = (
                 (error.status === 429) || 
                 (error.message && error.message.includes('429')) ||
                 (error.message && error.message.toLowerCase().includes('rate limit'))
             );
 
-            if (isRateLimitError && i < maxRetries - 1) {
-                const delay = initialDelay * Math.pow(2, i) + Math.random() * 1000;
+            let delay = 1000; // Default delay for non-rate-limit errors
+            if (isRateLimitError) {
+                delay = initialDelay * Math.pow(2, i) + Math.random() * 1000;
                 console.warn(`Rate limit error detected. Retrying in ${Math.round(delay / 1000)}s... (Attempt ${i + 1}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, delay));
             } else {
-                console.error(`AI call failed on attempt ${i + 1}.`, error);
-                throw error;
+                 console.warn(`AI call failed. Retrying in ${delay/1000}s... (Attempt ${i + 1}/${maxRetries})`, error.message);
             }
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
+    // This part should be unreachable if maxRetries > 0, but is a good fallback.
     throw new Error(`AI call failed after ${maxRetries} attempts. Last error: ${lastError?.message}`);
 };
 
 
 /**
- * Intelligently fetches a resource by first attempting a direct connection.
+ * Intelligently fetches a public resource (e.g., sitemap) by first attempting a direct connection.
  * If the direct connection fails due to a CORS-like network error, it automatically
- * falls back to a series of reliable CORS proxies.
+ * falls back to a series of reliable CORS proxies. **Primarily intended for public GET requests.**
  * @param url The target URL to fetch.
  * @param options The standard fetch options object.
  * @returns A Promise that resolves with the Response object.
@@ -175,6 +199,30 @@ const smartFetch = async (url: string, options: RequestInit = {}): Promise<Respo
     }
     console.error("All proxies failed.", lastError);
     throw new Error(`All proxies failed to fetch the resource. Last error: ${lastError.message}`);
+};
+
+/**
+ * Performs a direct fetch request without proxy fallbacks.
+ * Provides a more informative error message for common CORS issues,
+ * which is crucial for authenticated API calls where proxies are not suitable.
+ * @param url The target URL to fetch.
+ * @param options The standard fetch options object.
+ * @returns A Promise that resolves with the Response object.
+ */
+const directFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    try {
+        const response = await fetch(url, options);
+        return response;
+    } catch (error) {
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            throw new Error(
+                "A network error occurred, likely due to a CORS policy on your server. " +
+                "Please ensure your WordPress URL is correct and that your server is configured to accept requests. " +
+                "Using a browser extension to disable CORS can be a temporary workaround for development."
+            );
+        }
+        throw error;
+    }
 };
 
 const slugToTitle = (url: string): string => {
@@ -286,7 +334,7 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
                     <div className="form-group"><label htmlFor="wpUser">WordPress Username</label><input type="text" id="wpUser" value={wpUser} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpUser', value: e.target.value } })} placeholder="admin" /></div>
                     <div className="form-group"><label htmlFor="wpPassword">Application Password</label><input type="password" id="wpPassword" value={wpPassword} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'wpPassword', value: e.target.value } })} placeholder="••••••••••••••••" /><p className="help-text">This is not your main password. <a href="https://wordpress.org/documentation/article/application-passwords/" target="_blank" rel="noopener noreferrer">Learn how to create one</a>.</p></div>
                     <div className="checkbox-group"><input type="checkbox" id="saveConfig" checked={saveConfig} onChange={(e) => setSaveConfig(e.target.checked)} /><label htmlFor="saveConfig">Save WordPress Configuration</label></div>
-                    <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: 'var(--warning-bg-color)', border: '1px solid var(--warning-color)', color: 'var(--warning-text-color)' }}><p style={{margin: 0, fontSize: '0.875rem', lineHeight: '1.5'}}><strong>Security Note:</strong> For reliability, this app may use public proxies to bypass browser security (CORS). Use a dedicated Application Password with limited permissions, not main admin credentials.</p></div>
+                    <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: 'var(--warning-bg-color)', border: '1px solid var(--warning-color)', color: 'var(--warning-text-color)' }}><p style={{margin: 0, fontSize: '0.875rem', lineHeight: '1.5'}}><strong>Security Note:</strong> This app connects directly to your WordPress site. Connection issues (CORS) may require server configuration. Always use a dedicated Application Password with limited permissions.</p></div>
                 </fieldset>
 
                 <fieldset className="config-fieldset">
@@ -378,7 +426,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
     
     const generatableCount = useMemo(() => {
         return [...selectedPostIds].filter(id => {
-            const status = generationStatus[id];
+            const status = generationStatus[String(id)];
             return status !== 'done' && status !== 'generating';
         }).length;
     }, [selectedPostIds, generationStatus]);
@@ -598,10 +646,10 @@ const ReviewModal = ({ state, dispatch, onPublish, onClose }) => {
                     <button className="btn btn-secondary" onClick={onClose}>Back to Selection</button>
                     <button className="btn" onClick={() => onPublish(currentPost)} disabled={loading}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : `Publish to WordPress`}</button>
                 </div>
-                 {publishingStatus[currentPost.id] && (
-                    <div className={`result ${publishingStatus[currentPost.id].success ? 'success' : 'error'}`}>
-                        {publishingStatus[currentPost.id].message}
-                        {publishingStatus[currentPost.id].link && <>&nbsp;<a href={publishingStatus[currentPost.id].link} target="_blank" rel="noopener noreferrer">View Post</a></>}
+                 {publishingStatus[String(currentPost.id)] && (
+                    <div className={`result ${publishingStatus[String(currentPost.id)].success ? 'success' : 'error'}`}>
+                        {publishingStatus[String(currentPost.id)].message}
+                        {publishingStatus[String(currentPost.id)].link && <>&nbsp;<a href={publishingStatus[String(currentPost.id)].link} target="_blank" rel="noopener noreferrer">View Post</a></>}
                     </div>
                 )}
             </div>
@@ -628,8 +676,8 @@ const initialState = {
     openRouterModel: 'google/gemini-flash-1.5',
     openRouterModels: ['google/gemini-flash-1.5', 'openai/gpt-4o', 'anthropic/claude-3-haiku'],
     contentMode: 'new',
-    publishingStatus: {},
-    generationStatus: {}, // { postId: 'idle' | 'generating' | 'done' | 'error' }
+    publishingStatus: {} as { [key: string]: { success: boolean, message: string, link?: string } },
+    generationStatus: {} as { [key: string]: 'idle' | 'generating' | 'done' | 'error' }, // { postId: 'idle' | 'generating' | 'done' | 'error' }
     bulkGenerationProgress: { current: 0, total: 0, visible: false },
     currentReviewIndex: 0,
     isReviewModalOpen: false,
@@ -649,12 +697,12 @@ function reducer(state, action) {
         case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: action.payload, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set() };
         case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', sortConfig: { key: 'modified', direction: 'asc' } };
         case 'FETCH_ERROR': return { ...state, loading: false, error: action.payload };
-        case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [action.payload.postId]: action.payload.status } };
+        case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [String(action.payload.postId)]: action.payload.status } };
         case 'GENERATE_SINGLE_POST_SUCCESS': return { ...state, posts: state.posts.map(p => p.id === action.payload.id ? action.payload : p) };
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
         case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '' };
         case 'PUBLISH_START': return { ...state, loading: true };
-        case 'PUBLISH_SUCCESS': case 'PUBLISH_ERROR': return { ...state, loading: false, publishingStatus: { ...state.publishingStatus, [action.payload.postId]: { success: action.payload.success, message: action.payload.message, link: action.payload.link } } };
+        case 'PUBLISH_SUCCESS': case 'PUBLISH_ERROR': return { ...state, loading: false, publishingStatus: { ...state.publishingStatus, [String(action.payload.postId)]: { success: action.payload.success, message: action.payload.message, link: action.payload.link } } };
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
         case 'SET_REVIEW_INDEX': return { ...state, currentReviewIndex: action.payload };
         case 'OPEN_REVIEW_MODAL': return { ...state, isReviewModalOpen: true, currentReviewIndex: action.payload };
@@ -715,9 +763,10 @@ const App = () => {
     
     const handleFetchSitemap = async (sitemapUrl, urlLimit, saveConfig) => {
         dispatch({ type: 'FETCH_START' });
-        if (saveConfig) localStorage.setItem('wpContentOptimizerConfig', JSON.stringify({ wpUrl: state.wpUrl, wpUser: state.wpUser, wpPassword: state.wpPassword, aiProvider: state.aiProvider, apiKeys: state.apiKeys }));
+        if (saveConfig) {
+            localStorage.setItem('wpContentOptimizerConfig', JSON.stringify({ wpUrl: state.wpUrl, wpUser: state.wpUser, wpPassword: state.wpPassword, aiProvider: state.aiProvider, apiKeys: state.apiKeys }));
+        }
         
-        let generatedText = '';
         try {
             const sitemapResponse = await smartFetch(sitemapUrl);
             if (!sitemapResponse.ok) throw new Error(`Failed to fetch sitemap. Status: ${sitemapResponse.status}`);
@@ -729,47 +778,41 @@ const App = () => {
             const ai = getAiClient();
             const prompt = `You are an expert SEO strategist. Analyze these URLs: ${urls.join(', ')}. Identify 5 highly relevant, engaging topics or long-tail keywords the site likely hasn't covered to expand its topical authority. For each, provide a compelling blog post title and a brief reason for its value. Return a single, valid JSON object: { "suggestions": [ { "topic": "...", "reason": "..." } ] }`;
             
-            if (state.aiProvider === 'gemini') {
-                const response = await makeResilientAiCall(() => (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { suggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ['topic', 'reason'] } } }, required: ['suggestions'] } } }));
-                generatedText = response.text;
-            } else if (state.aiProvider === 'anthropic') {
-                const response = await makeResilientAiCall(() => (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] }));
-                generatedText = response.content[0].type === 'text' ? response.content[0].text : '';
-            } else { // OpenAI and OpenRouter
-                const response = await makeResilientAiCall(() => (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } }));
-                generatedText = response.choices[0].message.content;
-            }
+            const parsedData = await makeResilientAiCall(async () => {
+                let generatedText = '';
+                if (state.aiProvider === 'gemini') {
+                    const response = await (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { suggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ['topic', 'reason'] } } }, required: ['suggestions'] } } });
+                    generatedText = response.text;
+                } else if (state.aiProvider === 'anthropic') {
+                    const response = await (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] });
+                    generatedText = response.content[0].type === 'text' ? response.content[0].text : '';
+                } else { // OpenAI and OpenRouter
+                    const response = await (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
+                    generatedText = response.choices[0].message.content;
+                }
 
-            try {
+                if (!generatedText) {
+                    throw new Error("AI returned an empty response.");
+                }
+                
                 const jsonText = extractJson(generatedText);
-                const parsedData = JSON.parse(jsonText);
-                const suggestions = parsedData.suggestions;
+                const data = JSON.parse(jsonText);
 
-                if (!suggestions || !Array.isArray(suggestions)) {
-                    throw new Error("AI response is missing the 'suggestions' array.");
+                if (!data || !data.suggestions || !Array.isArray(data.suggestions) || data.suggestions.length === 0) {
+                    throw new Error("AI response is missing 'suggestions' array or it is empty.");
                 }
-                
-                const posts = suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
-                dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
+                return data;
+            });
 
-            } catch (parseError) {
-                console.error("Failed to parse AI response:", { generatedText, error: parseError });
-                let errorMessage = "An unknown error occurred during parsing.";
-                if (parseError instanceof Error) {
-                    errorMessage = parseError.message;
-                } else if (typeof parseError === 'string') {
-                    errorMessage = parseError;
-                }
-                
-                const friendlyMessage = errorMessage.includes("JSON") || errorMessage.includes("find a valid JSON")
-                    ? "The AI returned a malformed response. Please try again."
-                    : errorMessage;
-                throw new Error(`Error processing AI suggestions: ${friendlyMessage}`);
-            }
+            const posts = parsedData.suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
+            dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
 
         } catch (error) {
             const message = (error instanceof Error) ? error.message : String(error);
-            dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${message}. Please verify the URL is correct and accessible.` });
+            const friendlyMessage = message.includes("JSON") || message.includes("malformed") || message.includes("missing 'suggestions'") || message.includes("empty response")
+                ? "The AI returned a malformed or empty response that could not be corrected after retries. Please try again."
+                : message;
+            dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${friendlyMessage}. Please verify the URL is correct and accessible.` });
         }
     };
 
@@ -779,7 +822,7 @@ const App = () => {
         try {
             const endpoint = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link,modified&per_page=50&orderby=modified&order=asc`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`) });
-            const response = await smartFetch(endpoint, { headers });
+            const response = await directFetch(endpoint, { headers });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
@@ -807,7 +850,8 @@ const App = () => {
     const handleGenerateContent = async (postToProcess) => {
         dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'generating' } });
 
-        const internalLinksList = PROMOTIONAL_LINKS.map(url => `- [${slugToTitle(url)}](${url})`).join('\n');
+        const relevantInternalLinks = getRandomSubset(PROMOTIONAL_LINKS, 50);
+        const internalLinksList = relevantInternalLinks.map(url => `- [${slugToTitle(url)}](${url})`).join('\n');
         const internalLinksInstruction = `**Internal Linking:** Your primary goal is to include 6-10 highly relevant internal links within the article body. You MUST choose them from the following list of high-value articles from affiliatemarketingforsuccess.com. Use rich, descriptive anchor text. Do NOT use placeholder links.\n\n**Available Internal Links:**\n${internalLinksList}`;
         
         const referencesInstruction = state.aiProvider === 'gemini' 
@@ -832,25 +876,39 @@ const App = () => {
 
         try {
             const ai = getAiClient();
-            let response: GenerateContentResponse | null = null;
-            let generatedText: string;
-
-            if (state.aiProvider === 'gemini') {
-                response = await makeResilientAiCall(() => (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: basePrompt, config: { tools: [{ googleSearch: {} }] } }));
-                generatedText = response.text;
-            } else if (state.aiProvider === 'anthropic') {
-                const anthropicResponse = await makeResilientAiCall(() => (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: basePrompt }] }));
-                generatedText = anthropicResponse.content[0].type === 'text' ? anthropicResponse.content[0].text : '';
-            } else {
-                const openAiResponse = await makeResilientAiCall(() => (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: basePrompt }], response_format: { type: "json_object" } }));
-                generatedText = openAiResponse.choices[0].message.content;
-            }
             
-            const jsonText = extractJson(generatedText);
-            const parsedContent = JSON.parse(jsonText);
+            const { parsedContent, geminiResponse } = await makeResilientAiCall(async () => {
+                let generatedText: string;
+                let response: GenerateContentResponse | null = null;
+    
+                if (state.aiProvider === 'gemini') {
+                    response = await (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: basePrompt, config: { tools: [{ googleSearch: {} }] } });
+                    generatedText = response.text;
+                } else if (state.aiProvider === 'anthropic') {
+                    const anthropicResponse = await (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: basePrompt }] });
+                    generatedText = anthropicResponse.content[0].type === 'text' ? anthropicResponse.content[0].text : '';
+                } else {
+                    const openAiResponse = await (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: basePrompt }], response_format: { type: "json_object" } });
+                    generatedText = openAiResponse.choices[0].message.content;
+                }
+                
+                if (!generatedText) {
+                    throw new Error("AI returned an empty response.");
+                }
+                
+                const jsonText = extractJson(generatedText);
+                const data = JSON.parse(jsonText);
+    
+                if (!data || !data.content) {
+                    throw new Error("AI response is missing required 'content' field.");
+                }
+    
+                return { parsedContent: data, geminiResponse: response };
+            });
+
             let finalContent = parsedContent.content || '';
 
-            const groundingChunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+            const groundingChunks = geminiResponse?.candidates?.[0]?.groundingMetadata?.groundingChunks;
             if (state.aiProvider === 'gemini' && groundingChunks && groundingChunks.length > 0) {
                 const uniqueReferences = (groundingChunks || []).reduce((map, chunk) => {
                     if (chunk.web?.uri) {
@@ -921,7 +979,7 @@ const App = () => {
             const endpoint = isUpdate ? `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts/${post.id}` : `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`), 'Content-Type': 'application/json' });
             const body = JSON.stringify({ title: post.title, content: post.content, status: 'publish', meta: { _yoast_wpseo_title: post.metaTitle, _yoast_wpseo_metadesc: post.metaDescription } });
-            const response = await smartFetch(endpoint, { method: 'POST', headers, body });
+            const response = await directFetch(endpoint, { method: 'POST', headers, body });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
