@@ -225,6 +225,54 @@ const directFetch = async (url: string, options: RequestInit = {}): Promise<Resp
     }
 };
 
+/**
+ * Recursively parses a sitemap or sitemap index to extract all unique URLs.
+ * @param url The URL of the sitemap or sitemap index.
+ * @param visited A Set to keep track of visited sitemap URLs to prevent infinite loops.
+ * @returns A Promise resolving to an array of all found URLs.
+ */
+const parseSitemap = async (url: string, visited: Set<string> = new Set()): Promise<string[]> => {
+    if (visited.has(url)) return [];
+    visited.add(url);
+
+    try {
+        const response = await smartFetch(url);
+        if (!response.ok) {
+            console.error(`Failed to fetch sitemap/index at ${url}. Status: ${response.status}`);
+            return []; // Fail gracefully for this URL
+        }
+        
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "application/xml");
+
+        if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+            console.error(`XML parsing error for ${url}`);
+            return [];
+        }
+
+        const isSitemapIndex = xmlDoc.getElementsByTagName('sitemapindex').length > 0;
+        if (isSitemapIndex) {
+            const sitemapUrls = Array.from(xmlDoc.getElementsByTagName('loc')).map(node => node.textContent).filter(Boolean) as string[];
+            const promises = sitemapUrls.map(sitemapUrl => parseSitemap(sitemapUrl, visited));
+            const results = await Promise.all(promises);
+            return results.flat();
+        }
+
+        const isUrlset = xmlDoc.getElementsByTagName('urlset').length > 0;
+        if (isUrlset) {
+            return Array.from(xmlDoc.getElementsByTagName('loc')).map(node => node.textContent).filter(Boolean) as string[];
+        }
+        
+        console.warn(`No <sitemapindex> or <urlset> found in ${url}.`);
+        return [];
+
+    } catch (error) {
+        console.error(`Error processing sitemap URL ${url}:`, error);
+        return [];
+    }
+};
+
 const slugToTitle = (url: string): string => {
     try {
         const path = new URL(url).pathname;
@@ -270,6 +318,25 @@ const Feature = ({ icon, title, children }) => (
     </div>
 );
 
+const PromotionalLinks = () => {
+    const linksToShow = useMemo(() => getRandomSubset(PROMOTIONAL_LINKS, 4), []);
+
+    return (
+        <div className="promo-links-section">
+            <h3>Explore Our Expertise</h3>
+            <p>Check out some of our top-performing content at affiliatemarketingforsuccess.com.</p>
+            <div className="promo-links-grid">
+                {linksToShow.map(url => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="promo-link-card">
+                        <h4>{slugToTitle(url)}</h4>
+                        <span>affiliatemarketingforsuccess.com</span>
+                    </a>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const LandingPageIntro = () => (
     <div className="landing-intro">
         <h2 className="usp-headline">The intelligent engine that elevates your content from good to #1.</h2>
@@ -296,6 +363,7 @@ const LandingPageIntro = () => (
                 Revitalize your old posts by completely rewriting them into definitive, up-to-date, and authoritative resources.
             </Feature>
         </div>
+        <PromotionalLinks />
         <div className="risk-reversal">
             <p><strong>Your Advantage:</strong> This is a powerful, free tool designed to give you a competitive edge. There are no trials or fees. Simply configure your details below and start optimizing.</p>
         </div>
@@ -339,8 +407,7 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
 
                 <fieldset className="config-fieldset">
                     <legend>Content Source</legend>
-                    <div className="form-group"><label htmlFor="sitemapUrl">Sitemap URL</label><input type="url" id="sitemapUrl" value={sitemapUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'sitemapUrl', value: e.target.value } })} placeholder="https://example.com/sitemap.xml" /></div>
-                    <div className="form-group"><label htmlFor="urlLimit">URL Limit for Analysis</label><input type="number" id="urlLimit" value={urlLimit} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'urlLimit', value: parseInt(e.target.value, 10) || 1 } })} min={1} /><p className="help-text">Max number of URLs from the sitemap to analyze for topic suggestions.</p></div>
+                    <div className="form-group"><label htmlFor="sitemapUrl">Sitemap URL (or Sitemap Index URL)</label><input type="url" id="sitemapUrl" value={sitemapUrl} onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { field: 'sitemapUrl', value: e.target.value } })} placeholder="https://example.com/sitemap.xml" /></div>
                 </fieldset>
 
                 <fieldset className="config-fieldset">
@@ -351,39 +418,41 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
                 </fieldset>
             </div>
 
-            <button className="btn" onClick={() => onFetchSitemap(sitemapUrl, urlLimit, saveConfig)} disabled={loading || !isSitemapConfigValid || !isApiKeyValid}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Analyze Sitemap & Continue'}</button>
+            <button className="btn" onClick={() => onFetchSitemap(sitemapUrl, saveConfig)} disabled={loading || !isSitemapConfigValid || !isApiKeyValid}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Sitemap & Continue'}</button>
         </div>
     );
 };
 
-const ContentCard = ({ post, onGenerate, onReview, generationStatus }) => {
-    const isGenerated = generationStatus === 'done';
-    const isGenerating = generationStatus === 'generating';
+const NewContentGenerator = ({ onGenerate, isGenerating }) => {
+    const [topic, setTopic] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (topic.trim() && !isGenerating) {
+            onGenerate(topic);
+        }
+    };
 
     return (
-        <div className={`content-card ${isGenerated ? 'generated' : ''}`}>
-            <div className="content-card-header">
-                <div className="header-main">
-                    <h3>{post.title}</h3>
-                    {isGenerated && <span className="status-badge generated">✔ Generated</span>}
-                </div>
-            </div>
-            <div className="content-card-body">
-                {post.reason && <p>{post.reason}</p>}
-                {isGenerated && (
-                     <textarea
-                        className="generated-content-preview"
-                        readOnly
-                        value={post.content.substring(0, 200) + '...'}
+        <div className="new-content-generator">
+            <h2>Create a New Pillar Post</h2>
+            <p>Enter your target keyword or a full blog post title below. The AI will generate a comprehensive, 1800+ word article designed to rank #1.</p>
+            <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                    <label htmlFor="newTopic">Topic or Keyword</label>
+                    <input
+                        type="text"
+                        id="newTopic"
+                        value={topic}
+                        onChange={(e) => setTopic(e.target.value)}
+                        placeholder="e.g., How to start affiliate marketing in 2025"
+                        disabled={isGenerating}
                     />
-                )}
-            </div>
-            <div className="content-card-actions">
-                <button className="btn" onClick={isGenerated ? onReview : onGenerate} disabled={isGenerating}>
-                    {isGenerating && <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div>}
-                    {!isGenerating && (isGenerated ? 'Review & Publish' : 'Generate Content')}
+                </div>
+                <button type="submit" className="btn" disabled={!topic.trim() || isGenerating}>
+                    {isGenerating ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate Article'}
                 </button>
-            </div>
+            </form>
         </div>
     );
 };
@@ -498,7 +567,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                 {loading && posts.length === 0 ? (
                                     <tr><td colSpan="5" style={{textAlign: 'center', padding: '2rem'}}><div className="spinner" style={{width: '32px', height: '32px', margin: '0 auto'}}></div></td></tr>
                                 ) : sortedPosts.map(post => {
-                                    const status = generationStatus[post.id] || 'idle';
+                                    const status = generationStatus[String(post.id)] || 'idle';
                                     const isSelected = selectedPostIds.has(post.id);
                                     return (
                                         <tr key={post.id} className={`${isSelected ? 'selected' : ''} status-row-${status}`}>
@@ -524,7 +593,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                                     </button>
                                                 )}
                                                 {status === 'done' && (
-                                                    <button className="btn btn-small" onClick={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => p.id === post.id) })}>
+                                                    <button className="btn btn-small" onClick={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => String(p.id) === String(post.id)) })}>
                                                         Review
                                                     </button>
                                                 )}
@@ -542,13 +611,13 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
 };
 
 const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll }) => {
-    const { posts, contentMode, generationStatus } = state;
+    const { contentMode, loading } = state;
 
     return (
         <div className="step-container">
             <div className="content-mode-toggle">
                 <button className={contentMode === 'new' ? 'active' : ''} onClick={() => dispatch({ type: 'SET_CONTENT_MODE', payload: 'new' })}>
-                    New Content from Sitemap
+                    New Content
                 </button>
                 <button className={contentMode === 'update' ? 'active' : ''} onClick={() => dispatch({ type: 'SET_CONTENT_MODE', payload: 'update' })}>
                     Update Existing Content
@@ -565,23 +634,8 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
                 />
             )}
 
-            {contentMode === 'new' && posts.length > 0 && (
-                <>
-                    <div className="content-cards-container">
-                        {posts.map((post, postIndex) => (
-                            <ContentCard 
-                                key={post.id} 
-                                post={post}
-                                generationStatus={generationStatus[post.id]}
-                                onGenerate={() => onGenerateContent(post)}
-                                onReview={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: postIndex })}
-                            />
-                        ))}
-                    </div>
-                    <div className="button-group" style={{justifyContent: 'center', marginTop: '2rem'}}>
-                        <button className="btn" onClick={onGenerateAll}>Generate All</button>
-                    </div>
-                </>
+            {contentMode === 'new' && (
+                 <NewContentGenerator onGenerate={onGenerateContent} isGenerating={loading} />
             )}
         </div>
     );
@@ -667,8 +721,8 @@ const Footer = () => (
 const initialState = {
     currentStep: 1,
     wpUrl: '', wpUser: '', wpPassword: '', sitemapUrl: '',
-    urlLimit: 50,
     posts: [],
+    sitemapUrls: [] as string[],
     loading: false, error: null,
     aiProvider: 'gemini',
     apiKeys: { gemini: '', openai: '', anthropic: '', openrouter: '' },
@@ -694,11 +748,21 @@ function reducer(state, action) {
         case 'SET_AI_PROVIDER': return { ...state, aiProvider: action.payload };
         case 'SET_KEY_STATUS': return { ...state, keyStatus: { ...state.keyStatus, [action.payload.provider]: action.payload.status } };
         case 'FETCH_START': return { ...state, loading: true, error: null };
-        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: action.payload, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set() };
+        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: [], sitemapUrls: action.payload.sitemapUrls, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set() };
         case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', sortConfig: { key: 'modified', direction: 'asc' } };
         case 'FETCH_ERROR': return { ...state, loading: false, error: action.payload };
         case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [String(action.payload.postId)]: action.payload.status } };
-        case 'GENERATE_SINGLE_POST_SUCCESS': return { ...state, posts: state.posts.map(p => p.id === action.payload.id ? action.payload : p) };
+        case 'GENERATE_SINGLE_POST_SUCCESS': return { ...state, posts: state.posts.map(p => String(p.id) === String(action.payload.id) ? action.payload : p) };
+        case 'ADD_GENERATED_POST_AND_REVIEW': {
+            const newPosts = [...state.posts, action.payload];
+            return {
+                ...state,
+                posts: newPosts,
+                loading: false,
+                isReviewModalOpen: true,
+                currentReviewIndex: newPosts.length - 1,
+            };
+        }
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
         case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '' };
         case 'PUBLISH_START': return { ...state, loading: true };
@@ -761,58 +825,22 @@ const App = () => {
         }
     }, []);
     
-    const handleFetchSitemap = async (sitemapUrl, urlLimit, saveConfig) => {
+    const handleFetchSitemap = async (sitemapUrl, saveConfig) => {
         dispatch({ type: 'FETCH_START' });
         if (saveConfig) {
             localStorage.setItem('wpContentOptimizerConfig', JSON.stringify({ wpUrl: state.wpUrl, wpUser: state.wpUser, wpPassword: state.wpPassword, aiProvider: state.aiProvider, apiKeys: state.apiKeys }));
         }
         
         try {
-            const sitemapResponse = await smartFetch(sitemapUrl);
-            if (!sitemapResponse.ok) throw new Error(`Failed to fetch sitemap. Status: ${sitemapResponse.status}`);
+            const allUrls = await parseSitemap(sitemapUrl);
+            if (allUrls.length === 0) throw new Error("No URLs found in the sitemap, or the sitemap could not be parsed.");
             
-            const sitemapText = await sitemapResponse.text();
-            const urls = Array.from(new DOMParser().parseFromString(sitemapText, "application/xml").querySelectorAll("loc")).map(node => node.textContent).slice(0, urlLimit);
-            if (urls.length === 0) throw new Error("No URLs found in the sitemap.");
-            
-            const ai = getAiClient();
-            const prompt = `You are an expert SEO strategist. Analyze these URLs: ${urls.join(', ')}. Identify 5 highly relevant, engaging topics or long-tail keywords the site likely hasn't covered to expand its topical authority. For each, provide a compelling blog post title and a brief reason for its value. Return a single, valid JSON object: { "suggestions": [ { "topic": "...", "reason": "..." } ] }`;
-            
-            const parsedData = await makeResilientAiCall(async () => {
-                let generatedText = '';
-                if (state.aiProvider === 'gemini') {
-                    const response = await (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { suggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ['topic', 'reason'] } } }, required: ['suggestions'] } } });
-                    generatedText = response.text;
-                } else if (state.aiProvider === 'anthropic') {
-                    const response = await (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] });
-                    generatedText = response.content[0].type === 'text' ? response.content[0].text : '';
-                } else { // OpenAI and OpenRouter
-                    const response = await (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: prompt }], response_format: { type: "json_object" } });
-                    generatedText = response.choices[0].message.content;
-                }
-
-                if (!generatedText) {
-                    throw new Error("AI returned an empty response.");
-                }
-                
-                const jsonText = extractJson(generatedText);
-                const data = JSON.parse(jsonText);
-
-                if (!data || !data.suggestions || !Array.isArray(data.suggestions) || data.suggestions.length === 0) {
-                    throw new Error("AI response is missing 'suggestions' array or it is empty.");
-                }
-                return data;
-            });
-
-            const posts = parsedData.suggestions.map((s, i) => ({ id: `suggestion-${i}`, title: s.topic, reason: s.reason, content: '' }));
-            dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: posts });
+            const uniqueUrls = [...new Set(allUrls)];
+            dispatch({ type: 'FETCH_SITEMAP_SUCCESS', payload: { sitemapUrls: uniqueUrls } });
 
         } catch (error) {
             const message = (error instanceof Error) ? error.message : String(error);
-            const friendlyMessage = message.includes("JSON") || message.includes("malformed") || message.includes("missing 'suggestions'") || message.includes("empty response")
-                ? "The AI returned a malformed or empty response that could not be corrected after retries. Please try again."
-                : message;
-            dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${friendlyMessage}. Please verify the URL is correct and accessible.` });
+            dispatch({ type: 'FETCH_ERROR', payload: `Error processing sitemap: ${message}. Please verify the URL is correct and accessible.` });
         }
     };
 
@@ -847,31 +875,72 @@ const App = () => {
         }
     };
 
-    const handleGenerateContent = async (postToProcess) => {
-        dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'generating' } });
+    const handleGenerateContent = async (postOrTopic) => {
+        const isNewContent = typeof postOrTopic === 'string';
+        const postToProcess = isNewContent ? { id: -Date.now(), title: postOrTopic } : postOrTopic;
 
-        const relevantInternalLinks = getRandomSubset(PROMOTIONAL_LINKS, 50);
-        const internalLinksList = relevantInternalLinks.map(url => `- [${slugToTitle(url)}](${url})`).join('\n');
-        const internalLinksInstruction = `**Internal Linking:** Your primary goal is to include 6-10 highly relevant internal links within the article body. You MUST choose them from the following list of high-value articles from affiliatemarketingforsuccess.com. Use rich, descriptive anchor text. Do NOT use placeholder links.\n\n**Available Internal Links:**\n${internalLinksList}`;
+        if (isNewContent) {
+            dispatch({ type: 'FETCH_START' }); // Use loading state for the whole screen
+        } else {
+            dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'generating' } });
+        }
+
+        let internalLinkCandidates: string[] = isNewContent
+            ? state.sitemapUrls
+            : state.posts.map(p => p.url).filter(Boolean);
+        
+        const relevantInternalLinks = getRandomSubset(internalLinkCandidates, 50);
+        const internalLinksList = relevantInternalLinks.length > 0
+            ? relevantInternalLinks.map(url => `- [${slugToTitle(url)}](${url})`).join('\n')
+            : '- No internal links available.';
+            
+        const internalLinksInstruction = `**Internal Linking:** Your primary goal is to include 6-10 highly relevant internal links within the article body. You MUST choose them from the following list of articles from the user's website. Use rich, descriptive anchor text. Do NOT use placeholder links.\n\n**Available Internal Links:**\n${internalLinksList}`;
         
         const referencesInstruction = state.aiProvider === 'gemini' 
             ? `**CRITICAL: Use Google Search:** You MUST use Google Search for up-to-date, authoritative info. A "References" section will be auto-generated from real search results to ensure all links are valid and functional.`
             : `**CRITICAL: Add REAL, VERIFIABLE References:** After the conclusion, you MUST add an H2 section titled "References". In this section, provide a bulleted list (\`<ul>\`) of 6-12 links to REAL, CURRENT, and ACCESSIBLE authoritative external sources. Every link MUST be a fully functional, live URL that does not result in a 404 error. Do not invent or guess URLs. Your top priority is the accuracy and validity of these links.`;
 
-        const isNewContent = state.contentMode === 'new';
-        const task = isNewContent ? "Write the ultimate, SEO-optimized blog post on the topic." : "Completely rewrite and supercharge the blog post from the URL into a definitive resource.";
-        const topicOrUrl = isNewContent ? postToProcess.title : postToProcess.url;
+        const topicOrUrl = isNewContent ? postToProcess.title : (postToProcess.url || postToProcess.title);
+        let task;
+
+        if (isNewContent) {
+            task = "Write the ultimate, SEO-optimized blog post on the topic.";
+        } else {
+            if (state.aiProvider === 'gemini') {
+                task = "Completely rewrite and supercharge the blog post from the URL into a definitive resource. Use your search capabilities to find the latest information and the content at the URL.";
+            } else {
+                task = `An existing blog post is at the URL below. Your task is to write a completely new, definitive, and supercharged article on the same topic, making it 10x better than the competition. Do NOT try to access the URL; instead, use your general knowledge to create a superior piece of content on the subject matter implied by the URL.`;
+            }
+        }
         
-        const basePrompt = `You are a world-class SEO and content creator. Your task is to produce a blog post that is 10x better than anything online, designed to rank #1.
+        const basePrompt = `You are a world-class SEO and content strategist, operating as a definitive expert in the given topic. Your mission is to produce a comprehensive, 1800+ word pillar blog post that is strategically designed to rank #1 on Google.
+
 **Core Task:** ${task}
-**Instructions:**
-1.  Return a single, valid JSON object with keys: "title", "metaTitle" (50-60 chars), "metaDescription" (150-160 chars), "content" (HTML body).
-2.  "content" MUST start with a "Wow" intro with a surprising statistic.
-3.  Immediately after the intro, add an H3 "Key Takeaways" inside a \`<div class="key-takeaways">\` with a bulleted list of 6 takeaways.
-4.  Write a comprehensive, 1500+ word article with H2s/H3s. Use short paragraphs, lists, and bolding.
-5.  ${internalLinksInstruction}
-6.  ${referencesInstruction}
-7.  The "content" string MUST NOT include the main <h1> title.
+
+**Pillar Post Generation Protocol:**
+
+1.  **Simulated SERP & Gap Analysis:**
+    *   Deconstruct the topic: Identify the primary keyword, related LSI keywords, and common "People Also Ask" questions.
+    *   Competitor Gap Analysis: Mentally analyze what the top 5 search results for this topic likely cover. Your primary objective is to create content that addresses the gaps they've missed, providing significantly more value, depth, and unique insights.
+
+2.  **Content & Tone:**
+    *   **Expert Persona:** Write with authority. Inject critical thinking, personal experience (you can simulate this), and strong opinions to make the content trustworthy and unique.
+    *   **Readability is Key:** Use short, punchy paragraphs (2-3 sentences max). Utilize bolding for key terms, bullet points (\`<ul>\`), and numbered lists (\`<ol>\`) to make the extensive content scannable and easy to digest.
+
+3.  **Required Article Structure (in this exact order):**
+    *   **"Wow" Introduction:** Start with a compelling hook, such as a surprising statistic or a bold claim, to grab the reader's attention immediately.
+    *   **Key Takeaways Box:** Immediately after the intro, add an H3 titled "Key Takeaways" inside a \`<div class="key-takeaways">\`. Provide a bulleted list of 6-8 crucial points from the article.
+    *   **Comprehensive Body:** This is the main section. Create a deep-dive exploration of the topic using clear H2 and H3 subheadings. Cover all aspects of the main keyword, LSI terms, and the insights from your gap analysis.
+    *   **Internal Linking:** ${internalLinksInstruction}
+    *   **FAQ Section:** Include an H2 titled "Frequently Asked Questions" and answer 3-5 relevant questions (inspired by "People Also Ask").
+    *   **Conclusion:** Provide a strong, actionable conclusion that summarizes the key points and gives the reader a clear next step.
+    *   **References:** ${referencesInstruction}
+
+4.  **Final JSON Output:**
+    *   You MUST return a single, valid JSON object.
+    *   The JSON object must have these exact keys: "title" (a compelling, SEO-friendly H1 title), "metaTitle" (50-60 characters), "metaDescription" (150-160 characters), and "content" (the full HTML body of the article).
+    *   The "content" string MUST NOT include the main <h1> title, as that will be handled separately.
+
 **${isNewContent ? 'Topic' : 'URL'}:** ${topicOrUrl}`;
 
         try {
@@ -926,9 +995,14 @@ const App = () => {
                 }
             }
             
-            const updatedPost = { ...postToProcess, title: parsedContent.title || postToProcess.title, metaTitle: parsedContent.metaTitle || '', metaDescription: parsedContent.metaDescription || '', content: finalContent || '<p>Error: Content generation failed.</p>' };
-            dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: updatedPost });
-            dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'done' } });
+            const finalPost = { ...postToProcess, title: parsedContent.title || postToProcess.title, metaTitle: parsedContent.metaTitle || '', metaDescription: parsedContent.metaDescription || '', content: finalContent || '<p>Error: Content generation failed.</p>' };
+            
+            if (isNewContent) {
+                dispatch({ type: 'ADD_GENERATED_POST_AND_REVIEW', payload: finalPost });
+            } else {
+                dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: finalPost });
+                dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'done' } });
+            }
 
         } catch (error) {
             console.error("AI Generation Error for", topicOrUrl, error);
@@ -943,8 +1017,12 @@ const App = () => {
                 ? `Rate limit exceeded: ${detailedMessage}` 
                 : `Error generating content: ${detailedMessage}`;
 
-            dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: { ...postToProcess, content: `<p>Error: ${errorMessage}</p>` } });
-            dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'error' } });
+            if(isNewContent) {
+                dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+            } else {
+                 dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: { ...postToProcess, content: `<p>Error: ${errorMessage}</p>` } });
+                 dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'error' } });
+            }
         }
     };
 
@@ -953,7 +1031,7 @@ const App = () => {
             ? state.posts.filter(p => state.selectedPostIds.has(p.id))
             : state.posts)
             .filter(p => {
-                const status = state.generationStatus[p.id];
+                const status = state.generationStatus[String(p.id)];
                 return status !== 'done' && status !== 'generating';
             });
 
@@ -975,7 +1053,7 @@ const App = () => {
         dispatch({ type: 'PUBLISH_START' });
         const { wpUrl, wpUser, wpPassword } = state;
         try {
-            const isUpdate = typeof post.id === 'number';
+            const isUpdate = typeof post.id === 'number' && post.id > 0;
             const endpoint = isUpdate ? `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts/${post.id}` : `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`), 'Content-Type': 'application/json' });
             const body = JSON.stringify({ title: post.title, content: post.content, status: 'publish', meta: { _yoast_wpseo_title: post.metaTitle, _yoast_wpseo_metadesc: post.metaDescription } });

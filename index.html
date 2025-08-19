@@ -235,6 +235,59 @@
         .risk-reversal strong {
             color: var(--text-color);
         }
+        
+        /* Promotional Links Section */
+        .promo-links-section {
+            margin: 2.5rem auto;
+            max-width: 700px;
+            padding: 2rem;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+        }
+        .promo-links-section h3 {
+            font-size: 1.5rem;
+            color: var(--text-heading-color);
+            margin: 0 0 0.5rem;
+        }
+        .promo-links-section p {
+            color: var(--text-light-color);
+            margin: 0 auto 2rem;
+            max-width: 500px;
+        }
+        .promo-links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            text-align: left;
+        }
+        .promo-link-card {
+            display: block;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--surface-color);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .promo-link-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+            border-color: var(--primary-color);
+        }
+        .promo-link-card h4 {
+            margin: 0 0 0.25rem;
+            color: var(--text-color);
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .promo-link-card span {
+            font-size: 0.8rem;
+            color: var(--text-light-color);
+        }
+        
         .config-forms-wrapper {
             display: grid;
             gap: 1rem;
@@ -350,21 +403,33 @@
         .content-mode-toggle button:hover { background-color: #2b3648; color: var(--text-heading-color); }
         .content-mode-toggle button.active { background: var(--gradient-primary); color: white; }
         
-        /* New Content Cards */
-        .content-cards-container { display: grid; gap: 1.5rem; }
-        .content-card {
-            background-color: var(--bg-color); border: 1px solid var(--border-color);
-            border-radius: 12px; overflow: hidden; transition: all 0.2s ease;
+        /* New Content Generator Form */
+        .new-content-generator {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
         }
-        .content-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-        .content-card.generated { border-color: rgba(63, 185, 80, 0.4); opacity: 0.9; }
-        .content-card-header { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); }
-        .header-main { flex-grow: 1; min-width: 0; }
-        .content-card-header h3 { margin: 0; font-size: 1.1rem; color: var(--text-heading-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .content-card-body { padding: 1.5rem; }
-        .content-card-body p { margin: 0 0 1.5rem 0; color: var(--text-light-color); line-height: 1.5; }
-        .content-card-actions { padding: 1rem 1.5rem; background-color: var(--surface-color); border-top: 1px solid var(--border-color); }
-        .generated-content-preview { width: 100%; min-height: 100px; background-color: var(--bg-color); color: var(--text-light-color); font-family: var(--font-family); font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem; resize: none; }
+        .new-content-generator h2 {
+            margin: 0 0 0.5rem;
+            color: var(--text-heading-color);
+            font-size: 1.5rem;
+        }
+        .new-content-generator p {
+            margin: 0 auto 2rem;
+            color: var(--text-light-color);
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        .new-content-generator form {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+        }
+        .new-content-generator .btn {
+            width: 100%;
+        }
         
         /* Existing Content Prompt & Table */
         .fetch-posts-prompt { text-align: center; padding: 2rem; margin: 2rem auto; background-color: var(--bg-color); border: 1px dashed var(--border-color); border-radius: 12px; }
