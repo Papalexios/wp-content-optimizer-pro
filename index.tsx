@@ -621,7 +621,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                                     </button>
                                                 )}
                                                 {status === 'done' && (
-                                                    <button className="btn btn-small" onClick={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => String(p.id) === String(post.id)) })}>
+                                                    <button className="btn btn-small" onClick={() => dispatch({ type: 'OPEN_REVIEW_MODAL', payload: posts.findIndex(p => p.id === post.id) })}>
                                                         Review
                                                     </button>
                                                 )}
@@ -806,40 +806,48 @@ function reducer(state, action) {
             const { originalPostId, responseData, message, link } = action.payload;
             const newPostId = responseData.id;
             const isCreation = typeof originalPostId === 'number' && originalPostId < 0;
-
+            
+            // Create a new publishingStatus object, ensuring the old temp ID is gone
+            // and the new permanent ID is set. This is crucial for UI feedback.
             const newPublishingStatus = { ...state.publishingStatus };
             if (isCreation) {
                 delete newPublishingStatus[String(originalPostId)];
             }
             newPublishingStatus[String(newPostId)] = { success: true, message, link };
+            
+            // Create a new posts array. This is the core fix to prevent stale IDs.
+            const updatedPosts = state.posts.map(post => {
+                // Find the post that was just published (by its original ID)
+                if (String(post.id) === String(originalPostId)) {
+                    // and update it with the new data from the server.
+                    // For creations, this replaces the temporary ID with the permanent one.
+                    // For updates, the ID stays the same, but other data is refreshed.
+                    return {
+                        ...post,
+                        id: newPostId,
+                        url: responseData.link,
+                        modified: responseData.modified
+                    };
+                }
+                return post;
+            });
 
             return {
                 ...state,
                 loading: false,
-                posts: state.posts.map(p => {
-                    if (String(p.id) === String(originalPostId)) {
-                        return { ...p, id: newPostId, url: responseData.link, modified: responseData.modified };
-                    }
-                    if (!isCreation && String(p.id) === String(newPostId)) {
-                        return { ...p, modified: responseData.modified };
-                    }
-                    return p;
-                }),
+                posts: updatedPosts,
                 publishingStatus: newPublishingStatus,
             };
         }
         case 'PUBLISH_ERROR': {
             const { postId, message } = action.payload;
+            // Create a new object to ensure state update and clear any previous success messages
+            const newPublishingStatus = { ...state.publishingStatus };
+            newPublishingStatus[String(postId)] = { success: false, message };
             return {
                 ...state,
                 loading: false,
-                publishingStatus: {
-                    ...state.publishingStatus,
-                    [String(postId)]: {
-                        success: false,
-                        message,
-                    },
-                },
+                publishingStatus: newPublishingStatus,
             };
         }
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
