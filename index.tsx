@@ -804,7 +804,7 @@ function reducer(state, action) {
         case 'PUBLISH_START': return { ...state, loading: true };
         case 'PUBLISH_SUCCESS': {
             const { originalPostId, responseData, message, link } = action.payload;
-            const newPostId = responseData.id;
+            const newPostId = Number(responseData.id);
             const isCreation = typeof originalPostId === 'number' && originalPostId < 0;
             
             // Create a new publishingStatus object, ensuring the old temp ID is gone
@@ -1247,6 +1247,10 @@ You MUST return a single, valid JSON object. The object should have a single key
             <div className="container">
                 <div className="app-header">
                      <h1>AI Content Engine</h1>
+                     <a href="https://viral-post.affiliatemarketingforsuccess.com/" target="_blank" rel="noopener noreferrer" className="btn btn-premium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        <span>Dominate Your Niche – Unlock Your Complete AI-Powered SEO Arsenal</span>
+                     </a>
                 </div>
                 {state.error && <div className="result error">{state.error}</div>}
                 
