@@ -284,7 +284,7 @@ const slugToTitle = (url: string): string => {
 };
 
 const ProgressBar = ({ currentStep }: { currentStep: number }) => {
-    const steps = ['Config', 'Manage Content', 'Review & Publish'];
+    const steps = ['Config', 'Content Strategy', 'Review & Publish'];
     return (
         <ol className="progress-bar">
             {steps.map((name, index) => {
@@ -339,29 +339,29 @@ const PromotionalLinks = () => {
 
 const LandingPageIntro = () => (
     <div className="landing-intro">
-        <h2 className="usp-headline">The intelligent engine that elevates your content from good to #1.</h2>
+        <h2 className="usp-headline">The AI Strategist that builds your content empire, from keyword to #1 ranking.</h2>
         <p className="usp-subheadline">
-            Go beyond generic AI writing. We analyze your content landscape to create strategically-focused articles, 10x better than the competition.
+            Go beyond generic AI writing. We analyze your entire site to build a data-driven content strategy, creating interconnected articles engineered to dominate search rankings.
         </p>
         <div className="features-grid">
             <Feature
                 icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002-2V9a2 2 0 00-2-2m-2 4h.01M15 20l5.447-2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m0 13V7m0 13a2 2 0 01-2-2V9a2 2 0 012-2m2 4h-.01" /></svg>}
-                title="Strategic Sitemap Analysis"
+                title="Full-Stack Content Strategy"
             >
-                Unlike other tools, we analyze your sitemap to find high-value content gaps and expand your topical authority.
-            </Feature>
+                Automatically identify core content pillars and generate entire "content clusters" to build topical authority and own your niche.
+            </>
             <Feature
                 icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>}
-                title="10x Content Generation"
+                title="Data-Driven Content Engine"
             >
-                Produce comprehensive, SEO-optimized, and internally-linked articles with a single click, ready to rank.
-            </Feature>
+                 Leverage live SERP analysis to find competitor gaps and generate 10x content with automated schema markup for higher rankings.
+            </>
             <Feature
                 icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
-                title="Existing Content Supercharger"
+                title="Automated Content Audits"
             >
-                Revitalize your old posts by completely rewriting them into definitive, up-to-date, and authoritative resources.
-            </Feature>
+                Automatically detect and flag "stale" content. Revitalize old posts with one click, turning content decay into a strategic advantage.
+            </>
         </div>
         <PromotionalLinks />
         <div className="risk-reversal">
@@ -418,12 +418,12 @@ const ConfigStep = ({ state, dispatch, onFetchSitemap, onValidateKey }) => {
                 </fieldset>
             </div>
 
-            <button className="btn" onClick={() => onFetchSitemap(sitemapUrl, saveConfig)} disabled={loading || !isSitemapConfigValid || !isApiKeyValid}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Sitemap & Continue'}</button>
+            <button className="btn" onClick={() => onFetchSitemap(sitemapUrl, saveConfig)} disabled={loading || !isSitemapConfigValid || !isApiKeyValid}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Analyze Site & Continue'}</button>
         </div>
     );
 };
 
-const NewContentHub = ({ onGenerate, isGenerating, onGenerateIdeas, isGeneratingTopics, suggestedTopics }) => {
+const SingleArticleGenerator = ({ onGenerate, isGenerating }) => {
     const [topic, setTopic] = useState('');
 
     const handleSubmit = (e) => {
@@ -434,61 +434,135 @@ const NewContentHub = ({ onGenerate, isGenerating, onGenerateIdeas, isGenerating
     };
 
     return (
-        <div className="new-content-hub">
-            <div className="topic-suggester">
-                <h2>AI Content Strategist</h2>
-                <p>Let our AI analyze your site and suggest high-impact pillar posts to build your topical authority and boost organic traffic.</p>
-                <button className="btn" onClick={onGenerateIdeas} disabled={isGeneratingTopics}>
-                    {isGeneratingTopics ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate SEO Topic Ideas'}
+        <div className="single-article-hub">
+            <h2>Single Article Generator</h2>
+            <p>Enter your target keyword or a full blog post title below. The AI will generate a comprehensive, 1800+ word article designed to rank #1, complete with SEO metadata and schema.</p>
+            <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                    <label htmlFor="newTopic">Topic or Keyword</label>
+                    <input
+                        type="text"
+                        id="newTopic"
+                        value={topic}
+                        onChange={(e) => setTopic(e.target.value)}
+                        placeholder="e.g., How to start affiliate marketing in 2025"
+                        disabled={isGenerating}
+                    />
+                </div>
+                <button type="submit" className="btn" disabled={!topic.trim() || isGenerating}>
+                    {isGenerating ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate Article'}
                 </button>
-                {suggestedTopics.length > 0 && (
-                    <div className="suggestions-list">
-                        {suggestedTopics.map((idea, index) => (
-                            <div className="suggestion-card" key={index}>
-                                <h4>{idea.title}</h4>
-                                <p>{idea.description}</p>
-                                <button className="btn btn-secondary" onClick={() => onGenerate(idea.title)} disabled={isGenerating}>
-                                    {isGenerating ? 'Busy...' : 'Write This Article'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-            
-            <div className="manual-topic-entry">
-                <h2>Or, Create Your Own Topic</h2>
-                <p>Enter your target keyword or a full blog post title below. The AI will generate a comprehensive, 1800+ word article designed to rank #1.</p>
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label htmlFor="newTopic">Topic or Keyword</label>
-                        <input
-                            type="text"
-                            id="newTopic"
-                            value={topic}
-                            onChange={(e) => setTopic(e.target.value)}
-                            placeholder="e.g., How to start affiliate marketing in 2025"
-                            disabled={isGenerating}
-                        />
-                    </div>
-                    <button type="submit" className="btn" disabled={!topic.trim() || isGenerating}>
-                        {isGenerating ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate Article'}
-                    </button>
-                </form>
-            </div>
+            </form>
         </div>
     );
 };
 
+
+const ContentClusterStrategist = ({ onGenerate, onGeneratePillars, onGenerateClusters, dispatch, state }) => {
+    const { isGeneratingPillars, pillarTopics, selectedPillar, isGeneratingClusters, clusterPlan, loading } = state;
+
+    if (pillarTopics.length === 0) {
+        return (
+            <div className="strategist-hub">
+                <h2>AI Content Strategist</h2>
+                <p>Let our AI analyze your entire sitemap to identify core "Pillar Topics." This forms the foundation of a powerful, interconnected content strategy that builds topical authority and dominates search rankings.</p>
+                <button className="btn" onClick={onGeneratePillars} disabled={isGeneratingPillars}>
+                    {isGeneratingPillars ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Analyze Website & Identify Pillar Topics'}
+                </button>
+            </div>
+        );
+    }
+
+    const hasClusterPlan = clusterPlan.existingAssets.length > 0 || clusterPlan.newOpportunities.length > 0;
+
+    return (
+        <div className="strategist-hub" style={{textAlign: 'left'}}>
+            <h2 style={{textAlign: 'center'}}>Step 1: Select Your Pillar Topic</h2>
+            <p style={{textAlign: 'center'}}>These are the core content pillars AI has identified for your site. Choose one to build out a "content cluster" of supporting articles.</p>
+            <div className="pillar-grid">
+                {pillarTopics.map((pillar, index) => (
+                    <div 
+                        className={`pillar-card ${selectedPillar?.title === pillar.title ? 'selected' : ''}`} 
+                        key={index} 
+                        onClick={() => dispatch({ type: 'SET_SELECTED_PILLAR', payload: pillar })}
+                    >
+                        <h4>{pillar.title}</h4>
+                        <p>{pillar.description}</p>
+                    </div>
+                ))}
+            </div>
+
+            {selectedPillar && (
+                <div className="cluster-section">
+                    <h2 style={{textAlign: 'center'}}>Step 2: Generate Your Topical Cluster Plan</h2>
+                    <p style={{textAlign: 'center'}}>Analyze existing content and identify gaps to create a comprehensive cluster around <strong>{selectedPillar.title}</strong>. This prevents keyword cannibalization and ensures a cohesive strategy.</p>
+                    <div style={{display: 'flex', justifyContent: 'center'}}>
+                        <button className="btn" onClick={() => onGenerateClusters(selectedPillar.title)} disabled={isGeneratingClusters}>
+                            {isGeneratingClusters ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Generate Cluster Plan'}
+                        </button>
+                    </div>
+                    
+                    {hasClusterPlan && (
+                        <div className="cluster-plan">
+                             <h3 style={{textAlign: 'center', marginTop: '2.5rem'}}>Step 3: Execute Your Content Plan</h3>
+                             
+                             {clusterPlan.existingAssets.length > 0 && (
+                                <div className="plan-section">
+                                    <h4 className="plan-section-title">Optimize Existing Content</h4>
+                                    {clusterPlan.existingAssets.map((asset, index) => (
+                                        <div className="cluster-item" key={`existing-${index}`}>
+                                             <div className="cluster-item-content">
+                                                <h5><span className="cluster-item-badge existing">Existing Asset</span>{slugToTitle(asset.url)}</h5>
+                                                <p><strong>Suggestion:</strong> {asset.suggestion}</p>
+                                            </div>
+                                            <button className="btn btn-secondary btn-small" onClick={() => onGenerate({ url: asset.url, title: slugToTitle(asset.url) })} disabled={loading}>
+                                                {loading ? 'Busy...' : 'Rewrite Article'}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                             )}
+
+                            {clusterPlan.newOpportunities.length > 0 && (
+                                <div className="plan-section">
+                                    <h4 className="plan-section-title">Fill Content Gaps</h4>
+                                    {clusterPlan.newOpportunities.map((opportunity, index) => (
+                                       <div className="cluster-item" key={`new-${index}`}>
+                                            <div className="cluster-item-content">
+                                                <h5><span className="cluster-item-badge new">New Opportunity</span>{opportunity.title}</h5>
+                                                <p>{opportunity.description}</p>
+                                            </div>
+                                            <button className="btn btn-secondary btn-small" onClick={() => onGenerate(opportunity.title, selectedPillar.title)} disabled={loading}>
+                                                {loading ? 'Busy...' : 'Write Article'}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAll, onFetchExistingPosts }) => {
     const { posts, loading, generationStatus, selectedPostIds, searchTerm, sortConfig, bulkGenerationProgress } = state;
+    const now = useMemo(() => new Date().getTime(), []);
     
+    const postsWithStale = useMemo(() => posts.map(p => ({
+        ...p,
+        isStale: p.modified ? (now - new Date(p.modified).getTime()) > 365 * 24 * 60 * 60 * 1000 : false
+    })), [posts, now]);
+
     const filteredPosts = useMemo(() => {
-        if (!searchTerm) return posts;
-        return posts.filter(post => 
+        if (!searchTerm) return postsWithStale;
+        return postsWithStale.filter(post => 
             post.title.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [posts, searchTerm]);
+    }, [postsWithStale, searchTerm]);
 
     const sortedPosts = useMemo(() => {
         const sorted = [...filteredPosts];
@@ -497,7 +571,6 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                 const aVal = a[sortConfig.key];
                 const bVal = b[sortConfig.key];
                 
-                // Rules to handle undefined/null values, pushing them to the bottom
                 if (aVal == null) return 1;
                 if (bVal == null) return -1;
 
@@ -518,8 +591,14 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
         const allVisibleIds = sortedPosts.map(p => p.id);
         dispatch({ type: 'SELECT_ALL_VISIBLE', payload: allVisibleIds });
     };
+    
+    const handleSelectStale = () => {
+        const staleIds = sortedPosts.filter(p => p.isStale).map(p => p.id);
+        dispatch({ type: 'SELECT_STALE', payload: staleIds });
+    };
 
     const allVisibleSelected = sortedPosts.length > 0 && sortedPosts.every(p => selectedPostIds.has(p.id));
+    const staleCount = useMemo(() => postsWithStale.filter(p => p.isStale).length, [postsWithStale]);
     
     const generatableCount = useMemo(() => {
         return [...selectedPostIds].filter(id => {
@@ -534,9 +613,9 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
          <div className="step-container full-width">
             {posts.length === 0 && !loading ? (
                 <div className="fetch-posts-prompt">
-                    <p>Ready to update your existing content?</p>
+                    <p>Ready to audit and supercharge your existing content?</p>
                     <button className="btn" onClick={onFetchExistingPosts} disabled={loading}>
-                        {loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Recent Posts'}
+                        {loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Recent Posts for Audit'}
                     </button>
                 </div>
             ) : (
@@ -550,6 +629,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                            onChange={e => dispatch({ type: 'SET_SEARCH_TERM', payload: e.target.value })}
                         />
                         <div className="selection-toolbar-actions">
+                            {staleCount > 0 && <button className="btn btn-secondary btn-small" onClick={handleSelectStale}>Select {staleCount} Stale Posts</button>}
                             {selectedPostIds.size > 0 && (
                                 <>
                                     <span>{selectedPostIds.size} post{selectedPostIds.size !== 1 ? 's' : ''} selected</span>
@@ -593,7 +673,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                             </thead>
                             <tbody>
                                 {loading && posts.length === 0 ? (
-                                    <tr><td colSpan="5" style={{textAlign: 'center', padding: '2rem'}}><div className="spinner" style={{width: '32px', height: '32px', margin: '0 auto'}}></div></td></tr>
+                                    <tr><td colSpan={5} style={{textAlign: 'center', padding: '2rem'}}><div className="spinner" style={{width: '32px', height: '32px', margin: '0 auto'}}></div></td></tr>
                                 ) : sortedPosts.map(post => {
                                     const status = generationStatus[String(post.id)] || 'idle';
                                     const isSelected = selectedPostIds.has(post.id);
@@ -607,7 +687,10 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                                                 />
                                             </td>
                                             <td data-label="Title"><a href={post.url} target="_blank" rel="noopener noreferrer">{post.title}</a></td>
-                                            <td data-label="Last Updated">{post.modified ? new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</td>
+                                            <td data-label="Last Updated">
+                                                {post.modified ? new Date(post.modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                                                {post.isStale && <span className="stale-badge">Needs Refresh</span>}
+                                            </td>
                                             <td data-label="Status">
                                                 <div className={`status status-${status}`}>
                                                     <span className="status-dot"></span>
@@ -638,20 +721,40 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
     );
 };
 
-const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll, onGenerateTopicIdeas }) => {
-    const { contentMode, loading, isGeneratingTopics, suggestedTopics } = state;
+const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts, onGenerateAll, onGeneratePillarTopics, onGenerateClusterTopics }) => {
+    const { contentMode } = state;
 
     return (
         <div className="step-container">
             <div className="content-mode-toggle">
-                <button className={contentMode === 'new' ? 'active' : ''} onClick={() => dispatch({ type: 'SET_CONTENT_MODE', payload: 'new' })}>
-                    New Content
+                <button className={contentMode === 'cluster' ? 'active' : ''} onClick={() => dispatch({ type: 'SET_CONTENT_MODE', payload: 'cluster' })}>
+                    Content Cluster Strategist
+                </button>
+                 <button className={contentMode === 'single' ? 'active' : ''} onClick={() => dispatch({ type: 'SET_CONTENT_MODE', payload: 'single' })}>
+                    Single Article
                 </button>
                 <button className={contentMode === 'update' ? 'active' : ''} onClick={() => dispatch({ type: 'SET_CONTENT_MODE', payload: 'update' })}>
                     Update Existing Content
                 </button>
             </div>
             
+            {contentMode === 'cluster' && (
+                <ContentClusterStrategist
+                    state={state}
+                    dispatch={dispatch}
+                    onGenerate={onGenerateContent}
+                    onGeneratePillars={onGeneratePillarTopics}
+                    onGenerateClusters={onGenerateClusterTopics}
+                />
+            )}
+
+            {contentMode === 'single' && (
+                 <SingleArticleGenerator
+                    onGenerate={onGenerateContent}
+                    isGenerating={state.loading}
+                 />
+            )}
+
             {contentMode === 'update' && (
                 <ExistingContentTable
                     state={state}
@@ -660,16 +763,6 @@ const ContentStep = ({ state, dispatch, onGenerateContent, onFetchExistingPosts,
                     onGenerateAll={onGenerateAll}
                     onFetchExistingPosts={onFetchExistingPosts}
                 />
-            )}
-
-            {contentMode === 'new' && (
-                 <NewContentHub
-                    onGenerate={onGenerateContent}
-                    isGenerating={loading}
-                    onGenerateIdeas={onGenerateTopicIdeas}
-                    isGeneratingTopics={isGeneratingTopics}
-                    suggestedTopics={suggestedTopics}
-                 />
             )}
         </div>
     );
@@ -706,6 +799,7 @@ const ReviewModal = ({ state, dispatch, onPublish, onClose }) => {
                 <div className="review-tabs">
                     <button className={`tab-btn ${activeTab === 'editor' ? 'active' : ''}`} onClick={() => setActiveTab('editor')}>Editor</button>
                     <button className={`tab-btn ${activeTab === 'seo' ? 'active' : ''}`} onClick={() => setActiveTab('seo')}>SEO</button>
+                    <button className={`tab-btn ${activeTab === 'schema' ? 'active' : ''}`} onClick={() => setActiveTab('schema')}>Schema</button>
                     <button className={`tab-btn ${activeTab === 'preview' ? 'active' : ''}`} onClick={() => setActiveTab('preview')}>Live Preview</button>
                 </div>
 
@@ -722,6 +816,13 @@ const ReviewModal = ({ state, dispatch, onPublish, onClose }) => {
                             <div className="form-group"><div className="label-wrapper"><label htmlFor="metaDescription">Meta Description</label><span className="char-counter">{String(currentPost.metaDescription || '').length} / 160</span></div><textarea id="metaDescription" className="meta-description-input" value={currentPost.metaDescription || ''} onChange={e => updatePostField('metaDescription', e.target.value)} /></div>
                         </>
                     )}
+                    {activeTab === 'schema' && (
+                        <div className="form-group">
+                            <label htmlFor="schemaMarkup">JSON-LD Schema Markup</label>
+                            <textarea id="schemaMarkup" value={currentPost.schemaMarkup || ''} onChange={e => updatePostField('schemaMarkup', e.target.value)}></textarea>
+                            <p className="help-text">The AI generates this automatically. It will be wrapped in `&lt;script&gt;` tags and added to the top of your post.</p>
+                        </div>
+                    )}
                     {activeTab === 'preview' && (
                         <div className="live-preview">
                             <h1>{currentPost.title}</h1>
@@ -731,7 +832,7 @@ const ReviewModal = ({ state, dispatch, onPublish, onClose }) => {
                 </div>
 
                 <div className="button-group">
-                    <button className="btn btn-secondary" onClick={onClose}>Back to Selection</button>
+                    <button className="btn btn-secondary" onClick={onClose}>Back to List</button>
                     <button className="btn" onClick={() => onPublish(currentPost)} disabled={loading}>{loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : `Publish to WordPress`}</button>
                 </div>
                  {publishingStatus[String(currentPost.id)] && (
@@ -763,17 +864,20 @@ const initialState = {
     keyStatus: { gemini: 'unknown', openai: 'unknown', anthropic: 'unknown', openrouter: 'unknown' },
     openRouterModel: 'google/gemini-flash-1.5',
     openRouterModels: ['google/gemini-flash-1.5', 'openai/gpt-4o', 'anthropic/claude-3-haiku'],
-    contentMode: 'new',
+    contentMode: 'cluster',
     publishingStatus: {} as { [key: string]: { success: boolean, message: string, link?: string } },
-    generationStatus: {} as { [key: string]: 'idle' | 'generating' | 'done' | 'error' }, // { postId: 'idle' | 'generating' | 'done' | 'error' }
+    generationStatus: {} as { [key: string]: 'idle' | 'generating' | 'done' | 'error' },
     bulkGenerationProgress: { current: 0, total: 0, visible: false },
     currentReviewIndex: 0,
     isReviewModalOpen: false,
     selectedPostIds: new Set(),
     searchTerm: '',
     sortConfig: { key: 'modified', direction: 'asc' },
-    isGeneratingTopics: false,
-    suggestedTopics: [] as { title: string; description: string }[],
+    isGeneratingPillars: false,
+    pillarTopics: [] as { title: string; description: string }[],
+    selectedPillar: null as { title: string; description: string } | null,
+    isGeneratingClusters: false,
+    clusterPlan: { existingAssets: [], newOpportunities: [] } as { existingAssets: { url: string; suggestion: string }[], newOpportunities: { title: string; description: string }[] },
 };
 
 function reducer(state, action) {
@@ -784,7 +888,7 @@ function reducer(state, action) {
         case 'SET_AI_PROVIDER': return { ...state, aiProvider: action.payload };
         case 'SET_KEY_STATUS': return { ...state, keyStatus: { ...state.keyStatus, [action.payload.provider]: action.payload.status } };
         case 'FETCH_START': return { ...state, loading: true, error: null };
-        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: [], sitemapUrls: action.payload.sitemapUrls, currentStep: 2, contentMode: 'new', generationStatus: {}, selectedPostIds: new Set(), suggestedTopics: [] };
+        case 'FETCH_SITEMAP_SUCCESS': return { ...state, loading: false, posts: [], sitemapUrls: action.payload.sitemapUrls, currentStep: 2, contentMode: 'cluster', generationStatus: {}, selectedPostIds: new Set(), pillarTopics: [], selectedPillar: null, clusterPlan: { existingAssets: [], newOpportunities: [] } };
         case 'FETCH_EXISTING_POSTS_SUCCESS': return { ...state, loading: false, posts: action.payload, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', sortConfig: { key: 'modified', direction: 'asc' } };
         case 'FETCH_ERROR': return { ...state, loading: false, error: action.payload };
         case 'SET_GENERATION_STATUS': return { ...state, generationStatus: { ...state.generationStatus, [String(action.payload.postId)]: action.payload.status } };
@@ -800,55 +904,28 @@ function reducer(state, action) {
             };
         }
         case 'UPDATE_POST_FIELD': return { ...state, posts: state.posts.map((post, index) => index === action.payload.index ? { ...post, [action.payload.field]: action.payload.value } : post) };
-        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', suggestedTopics: [] };
+        case 'SET_CONTENT_MODE': return { ...state, contentMode: action.payload, posts: [], error: null, generationStatus: {}, selectedPostIds: new Set(), searchTerm: '', pillarTopics: [], selectedPillar: null, clusterPlan: { existingAssets: [], newOpportunities: [] } };
         case 'PUBLISH_START': return { ...state, loading: true };
         case 'PUBLISH_SUCCESS': {
             const { originalPostId, responseData, message, link } = action.payload;
             const newPostId = Number(responseData.id);
             const isCreation = typeof originalPostId === 'number' && originalPostId < 0;
-            
-            // Create a new publishingStatus object, ensuring the old temp ID is gone
-            // and the new permanent ID is set. This is crucial for UI feedback.
             const newPublishingStatus = { ...state.publishingStatus };
-            if (isCreation) {
-                delete newPublishingStatus[String(originalPostId)];
-            }
+            if (isCreation) delete newPublishingStatus[String(originalPostId)];
             newPublishingStatus[String(newPostId)] = { success: true, message, link };
-            
-            // Create a new posts array. This is the core fix to prevent stale IDs.
             const updatedPosts = state.posts.map(post => {
-                // Find the post that was just published (by its original ID)
                 if (String(post.id) === String(originalPostId)) {
-                    // and update it with the new data from the server.
-                    // For creations, this replaces the temporary ID with the permanent one.
-                    // For updates, the ID stays the same, but other data is refreshed.
-                    return {
-                        ...post,
-                        id: newPostId,
-                        url: responseData.link,
-                        modified: responseData.modified
-                    };
+                    return { ...post, id: newPostId, url: responseData.link, modified: responseData.modified };
                 }
                 return post;
             });
-
-            return {
-                ...state,
-                loading: false,
-                posts: updatedPosts,
-                publishingStatus: newPublishingStatus,
-            };
+            return { ...state, loading: false, posts: updatedPosts, publishingStatus: newPublishingStatus };
         }
         case 'PUBLISH_ERROR': {
             const { postId, message } = action.payload;
-            // Create a new object to ensure state update and clear any previous success messages
             const newPublishingStatus = { ...state.publishingStatus };
             newPublishingStatus[String(postId)] = { success: false, message };
-            return {
-                ...state,
-                loading: false,
-                publishingStatus: newPublishingStatus,
-            };
+            return { ...state, loading: false, publishingStatus: newPublishingStatus };
         }
         case 'LOAD_CONFIG': return { ...state, ...action.payload };
         case 'SET_REVIEW_INDEX': return { ...state, currentReviewIndex: action.payload };
@@ -856,22 +933,21 @@ function reducer(state, action) {
         case 'CLOSE_REVIEW_MODAL': return { ...state, isReviewModalOpen: false };
         case 'TOGGLE_POST_SELECTION': {
             const newSelection = new Set(state.selectedPostIds);
-            if (newSelection.has(action.payload)) {
-                newSelection.delete(action.payload);
-            } else {
-                newSelection.add(action.payload);
-            }
+            if (newSelection.has(action.payload)) newSelection.delete(action.payload);
+            else newSelection.add(action.payload);
             return { ...state, selectedPostIds: newSelection };
         }
         case 'SELECT_ALL_VISIBLE': {
             const newSelection = new Set(state.selectedPostIds);
             const allVisibleIds = action.payload;
             const allCurrentlySelected = allVisibleIds.length > 0 && allVisibleIds.every(id => newSelection.has(id));
-            if (allCurrentlySelected) {
-                allVisibleIds.forEach(id => newSelection.delete(id));
-            } else {
-                allVisibleIds.forEach(id => newSelection.add(id));
-            }
+            if (allCurrentlySelected) allVisibleIds.forEach(id => newSelection.delete(id));
+            else allVisibleIds.forEach(id => newSelection.add(id));
+            return { ...state, selectedPostIds: newSelection };
+        }
+        case 'SELECT_STALE': {
+            const newSelection = new Set(state.selectedPostIds);
+            action.payload.forEach(id => newSelection.add(id));
             return { ...state, selectedPostIds: newSelection };
         }
         case 'DESELECT_ALL': return { ...state, selectedPostIds: new Set() };
@@ -880,9 +956,13 @@ function reducer(state, action) {
         case 'BULK_GENERATE_START': return { ...state, bulkGenerationProgress: { current: 0, total: action.payload, visible: true } };
         case 'BULK_GENERATE_PROGRESS': return { ...state, bulkGenerationProgress: { ...state.bulkGenerationProgress, current: state.bulkGenerationProgress.current + 1 } };
         case 'BULK_GENERATE_COMPLETE': return { ...state, bulkGenerationProgress: { current: 0, total: 0, visible: false } };
-        case 'GENERATE_TOPICS_START': return { ...state, isGeneratingTopics: true, error: null, suggestedTopics: [] };
-        case 'GENERATE_TOPICS_SUCCESS': return { ...state, isGeneratingTopics: false, suggestedTopics: action.payload };
-        case 'GENERATE_TOPICS_ERROR': return { ...state, isGeneratingTopics: false, error: action.payload };
+        case 'GENERATE_PILLARS_START': return { ...state, isGeneratingPillars: true, error: null, pillarTopics: [] };
+        case 'GENERATE_PILLARS_SUCCESS': return { ...state, isGeneratingPillars: false, pillarTopics: action.payload };
+        case 'GENERATE_PILLARS_ERROR': return { ...state, isGeneratingPillars: false, error: action.payload };
+        case 'SET_SELECTED_PILLAR': return { ...state, selectedPillar: action.payload, clusterPlan: { existingAssets: [], newOpportunities: [] } };
+        case 'GENERATE_CLUSTERS_START': return { ...state, isGeneratingClusters: true, error: null, clusterPlan: { existingAssets: [], newOpportunities: [] } };
+        case 'GENERATE_CLUSTERS_SUCCESS': return { ...state, isGeneratingClusters: false, clusterPlan: action.payload };
+        case 'GENERATE_CLUSTERS_ERROR': return { ...state, isGeneratingClusters: false, error: action.payload };
         default: throw new Error(`Unhandled action type: ${action.type}`);
     }
 }
@@ -961,150 +1041,168 @@ const App = () => {
         }
     };
 
-    const handleGenerateTopicIdeas = async () => {
-        dispatch({ type: 'GENERATE_TOPICS_START' });
-        const topicPrompt = `
-You are a master SEO strategist and content planner for a website in the affiliate marketing niche.
-Based on the following list of existing article URLs from the website, analyze the site's current topical authority. Your goal is to identify strategic content gaps and propose 5 new, high-impact pillar post ideas that will significantly boost organic traffic and strengthen the website's expertise.
+    const handleGeneratePillarTopics = async () => {
+        dispatch({ type: 'GENERATE_PILLARS_START' });
+        const prompt = `
+You are a world-class SEO content strategist. Your task is to analyze a website's sitemap to identify its main areas of expertise and propose high-level "pillar topics". A pillar topic is a broad subject area that can be broken down into many smaller, more specific articles (cluster content).
 
-**Analysis of Existing URLs:**
-${getRandomSubset(state.sitemapUrls, 50).join('\n')}
+Based on this list of URLs from the website:
+${getRandomSubset(state.sitemapUrls, 100).join('\n')}
 
 **Your Task:**
-Generate 5 blog post ideas that meet the following criteria:
-1.  **Topical Relevance:** They must be highly relevant to affiliate marketing, SEO, and making money online, complementing the existing content.
-2.  **High Traffic Potential:** Target keywords with substantial search volume and a clear path to ranking.
-3.  **Pillar Post Quality:** Each topic should be broad and deep enough to be developed into a 1800+ word comprehensive guide.
-4.  **Strategic Value:** The ideas should fill content gaps, attract a valuable audience segment, or target a lucrative sub-niche.
+Identify 3-5 core pillar topics for this website. For each pillar, provide a compelling title and a short description explaining why it's a crucial pillar for establishing topical authority in the affiliate marketing niche.
 
 **Output Format:**
-You MUST return a single, valid JSON object. The object should have a single key "ideas", which is an array of 5 objects. Each object in the array must have these two keys:
-- "title": A compelling, SEO-optimized H1 title for the blog post.
-- "description": A short, 1-2 sentence description explaining the strategic value of this topic and who it's for.
+Return a single, valid JSON object with a single key "pillars". "pillars" must be an array of objects, where each object has "title" and "description" keys.
 `;
         try {
             const ai = getAiClient();
             if (state.aiProvider !== 'gemini') {
-                throw new Error("Topic idea generation is currently only supported for the Google Gemini provider for best results.");
+                throw new Error("Pillar analysis is currently only supported for the Google Gemini provider for best results.");
             }
-            const { parsedContent } = await makeResilientAiCall(async () => {
-                 const response = await (ai as GoogleGenAI).models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: topicPrompt,
-                    config: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: Type.OBJECT,
-                            properties: {
-                                ideas: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            title: { type: Type.STRING },
-                                            description: { type: Type.STRING }
-                                        },
-                                        required: ["title", "description"]
-                                    }
-                                }
-                            },
-                             required: ["ideas"]
-                        }
-                    }
-                });
-                const jsonText = extractJson(response.text);
-                const data = JSON.parse(jsonText);
-                return { parsedContent: data };
-            });
-
-            if (!parsedContent.ideas || parsedContent.ideas.length === 0) {
-                throw new Error("AI did not return any topic ideas.");
-            }
-            dispatch({ type: 'GENERATE_TOPICS_SUCCESS', payload: parsedContent.ideas });
-
+            const response = await makeResilientAiCall(() => 
+                (ai as GoogleGenAI).models.generateContent({
+                    model: 'gemini-2.5-flash', contents: prompt,
+                    config: { responseMimeType: "application/json", responseSchema: {
+                        type: Type.OBJECT, properties: { pillars: { type: Type.ARRAY, items: {
+                            type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }}, required: ["title", "description"]
+                        }}}, required: ["pillars"]
+                    }}
+                })
+            );
+            const data = JSON.parse(extractJson(response.text));
+            if (!data.pillars || data.pillars.length === 0) throw new Error("AI did not return any pillar topics.");
+            dispatch({ type: 'GENERATE_PILLARS_SUCCESS', payload: data.pillars });
         } catch (error) {
-            console.error("Topic Generation Error", error);
             const message = (error instanceof Error) ? error.message : String(error);
-            dispatch({ type: 'GENERATE_TOPICS_ERROR', payload: `Error generating topic ideas: ${message}` });
+            dispatch({ type: 'GENERATE_PILLARS_ERROR', payload: `Error generating pillar topics: ${message}` });
         }
     };
 
+    const handleGenerateClusterTopics = async (pillarTopic) => {
+        dispatch({ type: 'GENERATE_CLUSTERS_START' });
+        const prompt = `
+You are an expert SEO content strategist specializing in building topical authority. Your mission is to create a complete "Topical Cluster Plan" around a central pillar topic, ensuring zero keyword cannibalization by analyzing the site's existing content.
 
-    const handleGenerateContent = async (postOrTopic) => {
+**Pillar Topic:** ${pillarTopic}
+
+**Full list of existing URLs on the website:**
+${state.sitemapUrls.join('\n')}
+
+**Your Task (3 Steps):**
+
+1.  **Map Existing Assets:** Analyze the full list of URLs provided. Identify every existing article that is relevant to the pillar topic "${pillarTopic}". These are your 'Existing Cluster Assets'.
+2.  **Identify Content Gaps:** Based on your expert knowledge of "${pillarTopic}", determine which crucial subtopics, user questions, and long-tail keywords are MISSING from the existing assets. Your goal is to find the gaps that prevent the website from being the definitive authority on this subject.
+3.  **Propose New Content:** Generate a list of 10-15 highly specific, long-tail blog post ideas that precisely fill the content gaps you identified. These are your 'New Cluster Opportunities'. Each title should be compelling and target a clear user intent.
+
+**Output Format:**
+Return a single, valid JSON object. This object MUST have two keys: "existingAssets" and "newOpportunities".
+
+*   \`"existingAssets"\`: An array of objects. Each object must have a \`"url"\` (the existing URL) and a \`"suggestion"\` (a brief, 1-sentence recommendation, e.g., "Good fit, ensure it links to the pillar page," or "Rewrite to focus more on X and improve depth.").
+*   \`"newOpportunities"\`: An array of objects. Each object must have a \`"title"\` and a 1-sentence \`"description"\` explaining the new article's focus.
+`;
+        try {
+             const ai = getAiClient();
+            if (state.aiProvider !== 'gemini') {
+                throw new Error("Cluster generation is currently only supported for the Google Gemini provider for best results.");
+            }
+            const response = await makeResilientAiCall(() =>
+                (ai as GoogleGenAI).models.generateContent({
+                    model: 'gemini-2.5-flash', contents: prompt,
+                    config: { responseMimeType: "application/json", responseSchema: {
+                        type: Type.OBJECT, properties: { 
+                            existingAssets: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { url: { type: Type.STRING }, suggestion: { type: Type.STRING }}, required: ["url", "suggestion"] }},
+                            newOpportunities: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }}, required: ["title", "description"] }}
+                        }, required: ["existingAssets", "newOpportunities"]
+                    }}
+                })
+            );
+            const data = JSON.parse(extractJson(response.text));
+            if (!data.existingAssets && !data.newOpportunities) throw new Error("AI did not return a valid cluster plan.");
+            dispatch({ type: 'GENERATE_CLUSTERS_SUCCESS', payload: data });
+        } catch (error) {
+            const message = (error instanceof Error) ? error.message : String(error);
+            dispatch({ type: 'GENERATE_CLUSTERS_ERROR', payload: `Error generating cluster plan: ${message}` });
+        }
+    };
+
+    const handleGenerateContent = async (postOrTopic, pillarTopic = null) => {
         const isNewContent = typeof postOrTopic === 'string';
-        const postToProcess = isNewContent ? { id: -Date.now(), title: postOrTopic } : postOrTopic;
-
+        const isRewriteFromUrl = typeof postOrTopic === 'object' && postOrTopic.url && !postOrTopic.id;
+        
+        let postToProcess;
         if (isNewContent) {
-            dispatch({ type: 'FETCH_START' }); // Use loading state for the whole screen
+            postToProcess = { id: -Date.now(), title: postOrTopic };
+        } else if (isRewriteFromUrl) {
+            postToProcess = { id: postOrTopic.url, title: postOrTopic.title, url: postOrTopic.url }; // Use URL as a temporary ID
         } else {
-            dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'generating' } });
+            postToProcess = postOrTopic;
         }
 
-        let internalLinkCandidates: string[] = isNewContent
-            ? state.sitemapUrls
-            : state.posts.map(p => p.url).filter(Boolean);
+        if (isNewContent) dispatch({ type: 'FETCH_START' });
+        else dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'generating' } });
+
+        const internalLinkCandidates = isNewContent ? state.sitemapUrls : state.posts.map(p => p.url).filter(Boolean);
+        const relevantInternalLinks = getRandomSubset(internalLinkCandidates, 75);
+        const internalLinksList = relevantInternalLinks.map(url => `- [${slugToTitle(url)}](${url})`).join('\n');
         
-        const relevantInternalLinks = getRandomSubset(internalLinkCandidates, 50);
-        const internalLinksList = relevantInternalLinks.length > 0
-            ? relevantInternalLinks.map(url => `- [${slugToTitle(url)}](${url})`).join('\n')
-            : '- No internal links available.';
-            
-        const internalLinksInstruction = `**Internal Linking:** Your primary goal is to include 6-10 highly relevant internal links within the article body. You MUST choose them from the following list of articles from the user's website. Use rich, descriptive anchor text. Do NOT use placeholder links.\n\n**Available Internal Links:**\n${internalLinksList}`;
-        
+        let internalLinksInstruction = `**Intelligent Internal Linking:** Your primary goal is to semantically link this article to other relevant content on the site. You MUST include 6-10 highly relevant internal links within the article body. Choose the most contextually relevant pages from the following list. Use varied, descriptive anchor text. Do NOT use placeholder links.\n\n**Available Internal Links:**\n${internalLinksList}`;
+        if (pillarTopic) {
+            internalLinksInstruction += `\n**Strategic Priority:** This article supports the main pillar topic: "${pillarTopic}". Prioritize finding and linking to the most relevant URL for this pillar.`;
+        }
+
         const referencesInstruction = state.aiProvider === 'gemini' 
             ? `**CRITICAL: Use Google Search:** You MUST use Google Search for up-to-date, authoritative info. A "References" section will be auto-generated from real search results to ensure all links are valid, functional, 200 OK pages.`
-            : `**CRITICAL: Add 100% REAL, VERIFIABLE References:** After the conclusion, you MUST add an H2 section titled "References". In this section, provide a bulleted list (\`<ul>\`) of 6-12 links to REAL, CURRENT, and ACCESSIBLE authoritative external sources. Every single link MUST be a fully functional, live URL that resolves to a 200 OK page. Do not invent, guess, or hallucinate URLs. Your absolute top priority is the accuracy and validity of these links.`;
+            : `**CRITICAL: Add 100% REAL, VERIFIABLE References:** After the conclusion, you MUST add an H2 section titled "References". Provide a bulleted list (\`<ul>\`) of 6-12 links to REAL, CURRENT, and ACCESSIBLE authoritative external sources. Every single link MUST be a fully functional, live URL. Do not invent or hallucinate URLs.`;
 
-        const topicOrUrl = isNewContent ? postToProcess.title : (postToProcess.url || postToProcess.title);
-        let task;
+        const topicOrUrl = postToProcess.url || postToProcess.title;
+        let task = isNewContent
+            ? "Write the ultimate, SEO-optimized blog post on the topic."
+            : (state.aiProvider === 'gemini'
+                ? "Completely rewrite and supercharge the blog post from the URL into a definitive resource. Use your search capabilities to find the latest information and the content at the URL."
+                : `An existing blog post is at the URL below. Your task is to write a completely new, definitive, and supercharged article on the same topic, making it 10x better than the competition. Do NOT try to access the URL; instead, use your general knowledge to create a superior piece of content on the subject matter implied by the URL.`);
 
-        if (isNewContent) {
-            task = "Write the ultimate, SEO-optimized blog post on the topic.";
-        } else {
-            if (state.aiProvider === 'gemini') {
-                task = "Completely rewrite and supercharge the blog post from the URL into a definitive resource. Use your search capabilities to find the latest information and the content at the URL.";
-            } else {
-                task = `An existing blog post is at the URL below. Your task is to write a completely new, definitive, and supercharged article on the same topic, making it 10x better than the competition. Do NOT try to access the URL; instead, use your general knowledge to create a superior piece of content on the subject matter implied by the URL.`;
-            }
-        }
-        
-        const basePrompt = `You are a world-class SEO and content strategist, operating as a definitive expert in the given topic. Your writing style is direct, high-conviction, and packed with actionable value, reminiscent of Alex Hormozi. You challenge conventional wisdom and provide non-obvious insights. Your mission is to produce a comprehensive, 1800+ word pillar blog post that is strategically designed to rank #1 on Google.
+        const basePrompt = `You are a world-class SEO and content strategist, operating as a definitive expert in the given topic. Your writing style is direct, high-conviction, and packed with actionable value, reminiscent of Alex Hormozi. Your mission is to produce a comprehensive, 1800+ word pillar blog post that is strategically designed to rank #1 on Google.
 
 **Core Task:** ${task}
 
 **Pillar Post Generation Protocol:**
 
-1.  **Simulated SERP & Gap Analysis:**
-    *   Deconstruct the topic: Identify the primary keyword, related LSI keywords, and common "People Also Ask" questions.
-    *   Competitor Gap Analysis: Mentally analyze what the top 5 search results for this topic likely cover. Your primary objective is to create "10x content" that addresses the gaps they've missed, providing significantly more value, depth, and unique insights.
+1.  **Data-Driven SERP & Gap Analysis:**
+    *   **Use Google Search:** Actively use your search capabilities to analyze the current top 5-10 search results for the primary keyword.
+    *   **Identify Content Gaps:** Your primary objective is to create "10x content" that addresses the gaps they've missed. What questions are unanswered? What topics are only superficially covered? Your article MUST provide significantly more value, depth, and unique insights than the current top rankers.
 
 2.  **Content & Tone:**
-    *   **Expert Persona:** Write with extreme authority. Inject critical thinking, simulated personal experience, and strong, defensible opinions to make the content trustworthy and unique. Avoid generic, fluffy language.
-    *   **Readability is Key:** Use short, punchy paragraphs (2-3 sentences max). Utilize bolding for key terms, bullet points (\`<ul>\`), and numbered lists (\`<ol>\`) to make the extensive content scannable and easy to digest.
+    *   **Expert Persona:** Write with extreme authority. Inject critical thinking and strong, defensible opinions. Avoid generic, fluffy language.
+    *   **Readability is Key:** Use short, punchy paragraphs (2-3 sentences max). Utilize bolding, bullet points (\`<ul>\`), and numbered lists (\`<ol>\`) to make the extensive content scannable.
 
 3.  **Required Article Structure (in this exact order):**
-    *   **"Wow" Introduction:** Start with a compelling hook, such as a surprising statistic, a bold contrarian claim, or a relatable pain point to grab the reader's attention immediately.
-    *   **Key Takeaways Box:** Immediately after the intro, add an H3 titled "Key Takeaways" inside a \`<div class="key-takeaways">\`. Provide a bulleted list of 6-8 crucial, actionable points from the article.
-    *   **Comprehensive Body:** This is the main section. Create a deep-dive exploration of the topic using clear H2 and H3 subheadings. The final article MUST be a pillar post of at least 1800 words. Cover all aspects of the main keyword, LSI terms, and the insights from your gap analysis.
-    *   **Internal Linking:** ${internalLinksInstruction}
-    *   **FAQ Section:** Include an H2 titled "Frequently Asked Questions" and answer 3-5 relevant questions (inspired by "People Also Ask").
-    *   **Conclusion:** Provide a strong, actionable conclusion that summarizes the key points and gives the reader a clear, compelling next step.
+    *   **"Wow" Introduction:** Start with a compelling hook: a surprising statistic, a bold contrarian claim, or a relatable pain point.
+    *   **Key Takeaways Box:** Immediately after the intro, add an H3 titled "Key Takeaways" inside a \`<div class="key-takeaways">\`. Provide a bulleted list of 6-8 crucial, actionable points.
+    *   **Comprehensive Body:** A deep-dive exploration of the topic using clear H2 and H3 subheadings. The final article MUST be at least 1800 words. Cover all aspects of the main keyword and the insights from your gap analysis.
+    *   **Intelligent Internal Linking:** ${internalLinksInstruction}
+    *   **FAQ Section:** Include an H2 titled "Frequently Asked Questions" and answer 3-5 relevant questions (inspired by "People Also Ask" from your search analysis).
+    *   **Conclusion:** A strong, actionable conclusion that summarizes the key points and gives the reader a clear next step.
     *   **References:** ${referencesInstruction}
 
-4.  **Final JSON Output:**
+4.  **Automated Schema Markup (JSON-LD):**
+    *   Based on the content, generate the appropriate JSON-LD schema.
+    *   If you include an FAQ section, you MUST generate \`FAQPage\` schema for it.
+    *   In all cases, generate \`Article\` schema. You can combine these using the \`@graph\` keyword if necessary.
+    *   The schema should be a complete, valid JSON object, ready to be embedded.
+
+5.  **Final JSON Output:**
     *   You MUST return a single, valid JSON object.
-    *   The JSON object must have these exact keys: "title" (a compelling, SEO-friendly H1 title), "metaTitle" (50-60 characters), "metaDescription" (150-160 characters), and "content" (the full HTML body of the article).
-    *   The "content" string MUST NOT include the main <h1> title, as that will be handled separately.
+    *   The object must have these exact keys: "title" (a compelling, SEO-friendly H1 title), "metaTitle" (50-60 characters), "metaDescription" (150-160 characters), "content" (the full HTML body), and "schemaMarkup" (a string containing the complete JSON-LD object).
+    *   The "content" string MUST NOT include the main <h1> title.
 
 **${isNewContent ? 'Topic' : 'URL'}:** ${topicOrUrl}`;
-
+        
         try {
             const ai = getAiClient();
-            
             const { parsedContent, geminiResponse } = await makeResilientAiCall(async () => {
                 let generatedText: string;
                 let response: GenerateContentResponse | null = null;
-    
                 if (state.aiProvider === 'gemini') {
                     response = await (ai as GoogleGenAI).models.generateContent({ model: 'gemini-2.5-flash', contents: basePrompt, config: { tools: [{ googleSearch: {} }] } });
                     generatedText = response.text;
@@ -1115,32 +1213,19 @@ You MUST return a single, valid JSON object. The object should have a single key
                     const openAiResponse = await (ai as OpenAI).chat.completions.create({ model: state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel, messages: [{ role: 'user', content: basePrompt }], response_format: { type: "json_object" } });
                     generatedText = openAiResponse.choices[0].message.content;
                 }
-                
-                if (!generatedText) {
-                    throw new Error("AI returned an empty response.");
-                }
-                
-                const jsonText = extractJson(generatedText);
-                const data = JSON.parse(jsonText);
-    
-                if (!data || !data.content) {
-                    throw new Error("AI response is missing required 'content' field.");
-                }
-    
+                if (!generatedText) throw new Error("AI returned an empty response.");
+                const data = JSON.parse(extractJson(generatedText));
+                if (!data || !data.content) throw new Error("AI response is missing required 'content' field.");
                 return { parsedContent: data, geminiResponse: response };
             });
 
             let finalContent = parsedContent.content || '';
-
             const groundingChunks = geminiResponse?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-            if (state.aiProvider === 'gemini' && groundingChunks && groundingChunks.length > 0) {
-                const uniqueReferences = (groundingChunks || []).reduce((map, chunk) => {
-                    if (chunk.web?.uri) {
-                        map.set(chunk.web.uri, chunk.web.title || chunk.web.uri);
-                    }
+            if (state.aiProvider === 'gemini' && groundingChunks?.length > 0) {
+                const uniqueReferences = groundingChunks.reduce((map, chunk) => {
+                    if (chunk.web?.uri) map.set(chunk.web.uri, chunk.web.title || chunk.web.uri);
                     return map;
                 }, new Map<string, string>());
-
                 if (uniqueReferences.size > 0) {
                     let referencesHtml = '<div class="references-section"><h2>References</h2><ul>';
                     uniqueReferences.forEach((title, uri) => {
@@ -1150,31 +1235,17 @@ You MUST return a single, valid JSON object. The object should have a single key
                 }
             }
             
-            const finalPost = { ...postToProcess, title: parsedContent.title || postToProcess.title, metaTitle: parsedContent.metaTitle || '', metaDescription: parsedContent.metaDescription || '', content: finalContent || '<p>Error: Content generation failed.</p>' };
+            const finalPost = { ...postToProcess, title: parsedContent.title || postToProcess.title, metaTitle: parsedContent.metaTitle || '', metaDescription: parsedContent.metaDescription || '', content: finalContent, schemaMarkup: parsedContent.schemaMarkup ? JSON.stringify(parsedContent.schemaMarkup, null, 2) : '' };
             
-            if (isNewContent) {
-                dispatch({ type: 'ADD_GENERATED_POST_AND_REVIEW', payload: finalPost });
-            } else {
+            if (isNewContent || isRewriteFromUrl) dispatch({ type: 'ADD_GENERATED_POST_AND_REVIEW', payload: finalPost });
+            else {
                 dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: finalPost });
                 dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'done' } });
             }
-
         } catch (error) {
-            console.error("AI Generation Error for", topicOrUrl, error);
-            let detailedMessage = "An unknown error occurred.";
-            if (error instanceof Error) {
-                detailedMessage = error.message;
-            } else if (typeof error === 'string') {
-                detailedMessage = error;
-            }
-            
-            const errorMessage = (detailedMessage.includes('429')) 
-                ? `Rate limit exceeded: ${detailedMessage}` 
-                : `Error generating content: ${detailedMessage}`;
-
-            if(isNewContent) {
-                dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
-            } else {
+            const errorMessage = `Error generating content: ${(error instanceof Error) ? error.message : String(error)}`;
+            if(isNewContent) dispatch({ type: 'FETCH_ERROR', payload: errorMessage });
+            else {
                  dispatch({ type: 'GENERATE_SINGLE_POST_SUCCESS', payload: { ...postToProcess, content: `<p>Error: ${errorMessage}</p>` } });
                  dispatch({ type: 'SET_GENERATION_STATUS', payload: { postId: postToProcess.id, status: 'error' } });
             }
@@ -1182,27 +1253,12 @@ You MUST return a single, valid JSON object. The object should have a single key
     };
 
     const handleGenerateAll = async () => {
-        const postsToProcess = (state.selectedPostIds.size > 0
-            ? state.posts.filter(p => state.selectedPostIds.has(p.id))
-            : state.posts)
-            .filter(p => {
-                const status = state.generationStatus[String(p.id)];
-                return status !== 'done' && status !== 'generating';
-            });
-
+        const postsToProcess = state.posts.filter(p => state.selectedPostIds.has(p.id) && !['done', 'generating'].includes(state.generationStatus[String(p.id)]));
         if (postsToProcess.length === 0) return;
-        
         dispatch({ type: 'BULK_GENERATE_START', payload: postsToProcess.length });
-
-        const progressCallback = () => {
-            dispatch({ type: 'BULK_GENERATE_PROGRESS' });
-        };
-        
-        await processPromiseQueue(postsToProcess, handleGenerateContent, progressCallback, 2000);
-        
+        await processPromiseQueue(postsToProcess, handleGenerateContent, () => dispatch({ type: 'BULK_GENERATE_PROGRESS' }), 2000);
         dispatch({ type: 'BULK_GENERATE_COMPLETE' });
     };
-
 
     const handlePublish = async (post) => {
         dispatch({ type: 'PUBLISH_START' });
@@ -1212,22 +1268,17 @@ You MUST return a single, valid JSON object. The object should have a single key
             const isUpdate = typeof originalPostId === 'number' && originalPostId > 0;
             const endpoint = isUpdate ? `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts/${originalPostId}` : `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`), 'Content-Type': 'application/json' });
-            const body = JSON.stringify({ title: post.title, content: post.content, status: 'publish', meta: { _yoast_wpseo_title: post.metaTitle, _yoast_wpseo_metadesc: post.metaDescription } });
+            const schemaScript = post.schemaMarkup ? `<script type="application/ld+json">${post.schemaMarkup}</script>` : '';
+            const contentWithSchema = `${schemaScript}${post.content}`;
+            const body = JSON.stringify({ title: post.title, content: contentWithSchema, status: 'publish', meta: { _yoast_wpseo_title: post.metaTitle, _yoast_wpseo_metadesc: post.metaDescription } });
+            
             const response = await directFetch(endpoint, { method: 'POST', headers, body });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
             }
             const responseData = await response.json();
-            dispatch({
-                type: 'PUBLISH_SUCCESS',
-                payload: {
-                    originalPostId,
-                    responseData,
-                    message: `Successfully ${isUpdate ? 'updated' : 'published'} "${responseData.title.rendered}"!`,
-                    link: responseData.link
-                }
-            });
+            dispatch({ type: 'PUBLISH_SUCCESS', payload: { originalPostId, responseData, message: `Successfully ${isUpdate ? 'updated' : 'published'} "${responseData.title.rendered}"!`, link: responseData.link } });
         } catch (error) {
             const message = (error instanceof Error) ? error.message : String(error);
             dispatch({ type: 'PUBLISH_ERROR', payload: { postId: originalPostId, message: `Error publishing post: ${message}` } });
@@ -1237,7 +1288,7 @@ You MUST return a single, valid JSON object. The object should have a single key
     const renderContent = () => {
         switch (state.currentStep) {
             case 1: return <ConfigStep state={state} dispatch={dispatch} onFetchSitemap={handleFetchSitemap} onValidateKey={handleValidateKey} />;
-            case 2: return <ContentStep state={state} dispatch={dispatch} onGenerateContent={handleGenerateContent} onFetchExistingPosts={handleFetchExistingPosts} onGenerateAll={handleGenerateAll} onGenerateTopicIdeas={handleGenerateTopicIdeas} />;
+            case 2: return <ContentStep state={state} dispatch={dispatch} onGenerateContent={handleGenerateContent} onFetchExistingPosts={handleFetchExistingPosts} onGenerateAll={handleGenerateAll} onGeneratePillarTopics={handleGeneratePillarTopics} onGenerateClusterTopics={handleGenerateClusterTopics} />;
             default: return <div>Error: Invalid step.</div>;
         }
     };
@@ -1249,7 +1300,7 @@ You MUST return a single, valid JSON object. The object should have a single key
                      <h1>AI Content Engine</h1>
                      <a href="https://viral-post.affiliatemarketingforsuccess.com/" target="_blank" rel="noopener noreferrer" className="btn btn-premium">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                        <span>Dominate Your Niche – Unlock Your Complete AI-Powered SEO Arsenal</span>
+                        <span>Activate SEO Autopilot – Build Your Content Empire</span>
                      </a>
                 </div>
                 {state.error && <div className="result error">{state.error}</div>}
