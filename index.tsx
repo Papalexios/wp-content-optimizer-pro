@@ -1054,6 +1054,10 @@ Identify 3-5 core pillar topics for this website. For each pillar, provide a com
 
 **Output Format:**
 Return a single, valid JSON object with a single key "pillars". "pillars" must be an array of objects, where each object has "title" and "description" keys.
+
+**CRITICAL JSON RULES:**
+- All string values, especially "description", MUST be a single line of text.
+- DO NOT use raw newline characters (\\n) inside strings. All content for a single string value must be on one line.
 `;
         try {
             const ai = getAiClient();
@@ -1121,6 +1125,10 @@ Return a single, valid JSON object. This object MUST have two keys: "existingAss
 
 *   \`"existingAssets"\`: An array of objects. Each object must have a \`"url"\` (the existing URL) and a \`"suggestion"\` (a brief, 1-sentence recommendation, e.g., "Good fit, ensure it links to the pillar page," or "Rewrite to focus more on X and improve depth.").
 *   \`"newOpportunities"\`: An array of objects. Each object must have a \`"title"\` and a 1-sentence \`"description"\` explaining the new article's focus.
+
+**CRITICAL JSON RULES:**
+- All string values ('suggestion', 'title', 'description') MUST be a single line of text.
+- DO NOT use raw newline characters (\\n) inside strings. All content for a single string value must be on one line.
 `;
         try {
             const ai = getAiClient();
