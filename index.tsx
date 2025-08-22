@@ -1057,20 +1057,41 @@ Return a single, valid JSON object with a single key "pillars". "pillars" must b
 `;
         try {
             const ai = getAiClient();
-            if (state.aiProvider !== 'gemini') {
-                throw new Error("Pillar analysis is currently only supported for the Google Gemini provider for best results.");
+            let generatedText: string;
+
+            if (state.aiProvider === 'gemini') {
+                const response = await makeResilientAiCall(() =>
+                    (ai as GoogleGenAI).models.generateContent({
+                        model: 'gemini-2.5-flash', contents: prompt,
+                        config: {
+                            responseMimeType: "application/json", responseSchema: {
+                                type: Type.OBJECT, properties: { pillars: { type: Type.ARRAY, items: {
+                                    type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING } }, required: ["title", "description"]
+                                } } }, required: ["pillars"]
+                            }
+                        }
+                    })
+                );
+                generatedText = response.text;
+            } else if (state.aiProvider === 'anthropic') {
+                const anthropicResponse = await makeResilientAiCall(() =>
+                    (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] })
+                );
+                generatedText = anthropicResponse.content[0].type === 'text' ? anthropicResponse.content[0].text : '';
+            } else { // OpenAI and OpenRouter
+                const model = state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel;
+                const openAiResponse = await makeResilientAiCall(() =>
+                    (ai as OpenAI).chat.completions.create({
+                        model,
+                        messages: [{ role: 'user', content: prompt }],
+                        response_format: { type: "json_object" }
+                    })
+                );
+                generatedText = openAiResponse.choices[0].message.content;
             }
-            const response = await makeResilientAiCall(() => 
-                (ai as GoogleGenAI).models.generateContent({
-                    model: 'gemini-2.5-flash', contents: prompt,
-                    config: { responseMimeType: "application/json", responseSchema: {
-                        type: Type.OBJECT, properties: { pillars: { type: Type.ARRAY, items: {
-                            type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }}, required: ["title", "description"]
-                        }}}, required: ["pillars"]
-                    }}
-                })
-            );
-            const data = JSON.parse(extractJson(response.text));
+
+            if (!generatedText) throw new Error("AI returned an empty response.");
+            const data = JSON.parse(extractJson(generatedText));
             if (!data.pillars || data.pillars.length === 0) throw new Error("AI did not return any pillar topics.");
             dispatch({ type: 'GENERATE_PILLARS_SUCCESS', payload: data.pillars });
         } catch (error) {
@@ -1102,22 +1123,43 @@ Return a single, valid JSON object. This object MUST have two keys: "existingAss
 *   \`"newOpportunities"\`: An array of objects. Each object must have a \`"title"\` and a 1-sentence \`"description"\` explaining the new article's focus.
 `;
         try {
-             const ai = getAiClient();
-            if (state.aiProvider !== 'gemini') {
-                throw new Error("Cluster generation is currently only supported for the Google Gemini provider for best results.");
+            const ai = getAiClient();
+            let generatedText: string;
+
+            if (state.aiProvider === 'gemini') {
+                const response = await makeResilientAiCall(() =>
+                    (ai as GoogleGenAI).models.generateContent({
+                        model: 'gemini-2.5-flash', contents: prompt,
+                        config: {
+                            responseMimeType: "application/json", responseSchema: {
+                                type: Type.OBJECT, properties: {
+                                    existingAssets: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { url: { type: Type.STRING }, suggestion: { type: Type.STRING } }, required: ["url", "suggestion"] } },
+                                    newOpportunities: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING } }, required: ["title", "description"] } }
+                                }, required: ["existingAssets", "newOpportunities"]
+                            }
+                        }
+                    })
+                );
+                generatedText = response.text;
+            } else if (state.aiProvider === 'anthropic') {
+                const anthropicResponse = await makeResilientAiCall(() =>
+                    (ai as Anthropic).messages.create({ model: 'claude-3-haiku-20240307', max_tokens: 4096, messages: [{ role: 'user', content: prompt }] })
+                );
+                generatedText = anthropicResponse.content[0].type === 'text' ? anthropicResponse.content[0].text : '';
+            } else { // OpenAI and OpenRouter
+                const model = state.aiProvider === 'openai' ? 'gpt-4o' : state.openRouterModel;
+                const openAiResponse = await makeResilientAiCall(() =>
+                    (ai as OpenAI).chat.completions.create({
+                        model,
+                        messages: [{ role: 'user', content: prompt }],
+                        response_format: { type: "json_object" }
+                    })
+                );
+                generatedText = openAiResponse.choices[0].message.content;
             }
-            const response = await makeResilientAiCall(() =>
-                (ai as GoogleGenAI).models.generateContent({
-                    model: 'gemini-2.5-flash', contents: prompt,
-                    config: { responseMimeType: "application/json", responseSchema: {
-                        type: Type.OBJECT, properties: { 
-                            existingAssets: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { url: { type: Type.STRING }, suggestion: { type: Type.STRING }}, required: ["url", "suggestion"] }},
-                            newOpportunities: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING }}, required: ["title", "description"] }}
-                        }, required: ["existingAssets", "newOpportunities"]
-                    }}
-                })
-            );
-            const data = JSON.parse(extractJson(response.text));
+
+            if (!generatedText) throw new Error("AI returned an empty response.");
+            const data = JSON.parse(extractJson(generatedText));
             if (!data.existingAssets && !data.newOpportunities) throw new Error("AI did not return a valid cluster plan.");
             dispatch({ type: 'GENERATE_CLUSTERS_SUCCESS', payload: data });
         } catch (error) {
