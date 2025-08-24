@@ -615,7 +615,7 @@ const ExistingContentTable = ({ state, dispatch, onGenerateContent, onGenerateAl
                 <div className="fetch-posts-prompt">
                     <p>Ready to audit and supercharge your existing content?</p>
                     <button className="btn" onClick={onFetchExistingPosts} disabled={loading}>
-                        {loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch Recent Posts for Audit'}
+                        {loading ? <div className="spinner" style={{width: '24px', height: '24px', borderWidth: '2px'}}></div> : 'Fetch All Posts for Audit'}
                     </button>
                 </div>
             ) : (
@@ -1014,15 +1014,39 @@ const App = () => {
         dispatch({ type: 'FETCH_START' });
         const { wpUrl, wpUser, wpPassword } = state;
         try {
-            const endpoint = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link,modified&per_page=50&orderby=modified&order=asc`;
+            const allPosts = [];
+            let totalPages = 1;
+            const baseUrl = `${wpUrl.replace(/\/$/, "")}/wp-json/wp/v2/posts?_fields=id,title,link,modified&per_page=100&orderby=modified&order=asc`;
             const headers = new Headers({ 'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`) });
-            const response = await directFetch(endpoint, { headers });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+
+            const initialResponse = await directFetch(`${baseUrl}&page=1`, { headers });
+            if (!initialResponse.ok) {
+                const errorData = await initialResponse.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! Status: ${initialResponse.status}`);
             }
-            const existingPosts = await response.json();
-            const formattedPosts = existingPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, modified: p.modified, content: '' }));
+
+            const initialPosts = await initialResponse.json();
+            allPosts.push(...initialPosts);
+            
+            totalPages = parseInt(initialResponse.headers.get('X-WP-TotalPages') || '1', 10);
+            
+            if (totalPages > 1) {
+                const pagePromises = [];
+                for (let page = 2; page <= totalPages; page++) {
+                    pagePromises.push(directFetch(`${baseUrl}&page=${page}`, { headers }));
+                }
+                const responses = await Promise.all(pagePromises);
+                for (const response of responses) {
+                    if (response.ok) {
+                        const postsData = await response.json();
+                        allPosts.push(...postsData);
+                    } else {
+                        console.warn(`Failed to fetch a page of posts. Status: ${response.status}`);
+                    }
+                }
+            }
+
+            const formattedPosts = allPosts.map(p => ({ id: p.id, title: p.title.rendered, url: p.link, modified: p.modified, content: '' }));
             dispatch({ type: 'FETCH_EXISTING_POSTS_SUCCESS', payload: formattedPosts });
         } catch (error) {
             const message = (error instanceof Error) ? error.message : String(error);
