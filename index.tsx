@@ -349,19 +349,19 @@ const LandingPageIntro = () => (
                 title="Full-Stack Content Strategy"
             >
                 Automatically identify core content pillars and generate entire "content clusters" to build topical authority and own your niche.
-            </>
+            </Feature>
             <Feature
                 icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>}
                 title="Data-Driven Content Engine"
             >
                  Leverage live SERP analysis to find competitor gaps and generate 10x content with automated schema markup for higher rankings.
-            </>
+            </Feature>
             <Feature
                 icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
                 title="Automated Content Audits"
             >
                 Automatically detect and flag "stale" content. Revitalize old posts with one click, turning content decay into a strategic advantage.
-            </>
+            </Feature>
         </div>
         <PromotionalLinks />
         <div className="risk-reversal">
